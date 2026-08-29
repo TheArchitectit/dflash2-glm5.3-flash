@@ -1,200 +1,116 @@
-# DFlash2 for llama.cpp — OpenSpec
+# DFlash2 for llama.cpp — OpenSpec (rev 2, post-research)
+
+> **Research-driven revision.** The original spec (rev 1, git history) assumed a full
+> from-scratch port. Deep research (6 parallel agent reports in `research/`) revealed
+> DFlash2 support was already merged into the llama.cpp lineage both our forks carry
+> (PR #27342), including the grouped dynamic conv and candidate selector. The work is
+> therefore **conversion + validation**, not porting.
 
 ## Purpose
 
-Port incoai's DFlash2 block-diffusion draft model (`incoai/GLM-5.3-Flash-DFlash2`) to llama.cpp so GLM-5.3-Flash speculative decoding runs on CPU-only hosts.
+Run incoai's DFlash2 block-diffusion speculative decoding for GLM-5.3-Flash on the
+CPU-only ucs03 box. Projected: 1.32 t/s baseline → ~7 t/s at the published 5.78
+accepted tokens/step (bandwidth-bound CPU: verification of N tokens costs one weight
+read).
 
-**Why it matters on CPU:** decode is bandwidth-bound. Verifying N draft tokens costs the same single pass through target weights as generating 1 token. At DFlash2's reported 5.78 accepted tokens/step on GSM8K, GLM-5.3-Flash IQ4_XS goes from 1.32 t/s → projected ~7 t/s (5.3x).
+## Ground truth sources
 
-**Why it must be us:** DFlash2 ships only as BF16 safetensors loadable by a custom SGLang branch (GPU-only). No GGUF exists. The `LLM_ARCH_DFLASH` already in llama.cpp upstream is a *DSV4-family* drafter with a different tensor vocabulary (MLA attn, MoE FFN, hyper-connections) — incoai's DFlash2 is architecturally distinct (GQA attn, dense SwiGLU FFN, two-tap grouped dynamic convolutions, candidate-lattice selector).
+- Checkpoint: `incoai/GLM-5.3-Flash-DFlash2` (BF16 safetensors, 81 tensors, 2.2 GB)
+- Reference impl: SGLang PR #36708 (installed in
+  `/mnt/ollama/models/glm-5.3-flash/sglang-venv/.../sglang/srt/models/dflash.py`)
+- llama.cpp impl: `/mnt/ollama/models/llama-cpp-glm5/src/models/dflash.cpp` (988 lines)
+- Spec framework: `/mnt/ollama/models/llama-cpp-glm5/common/speculative.cpp` (dflash impl at ~line 962)
+- Converter: `/mnt/ollama/models/llama-cpp-glm5/conversion/qwen.py` (dflash_config handling at ~line 674-710)
+- Research reports: `research/01..06-*.md` (this repo)
 
-## Model Architecture (verified from checkpoint + SGLang reference)
+## Verified facts (from research + code inspection)
 
-Reference: `sglang/srt/models/dflash.py` (SGLang PR #36708) and checkpoint `config.json`.
-
-### Global
-
-| Property | Value |
-|---|---|
-| Architecture name | `DFlash2DraftModel` → **proposed GGUF arch: `dflash2`** |
-| Hidden size | 4096 |
-| Layers | 5 |
-| Attention heads | 32 (head_dim 128, GQA) |
-| KV heads | 8 |
-| Intermediate size | 12288 (SwiGLU) |
-| Vocab | 154880 (shares GLM-5.3-Flash vocab) |
-| RMSNorm eps | 1e-5 |
-| is_causal | **false** (bidirectional within block) |
-| Sliding window | 2048, all 5 layers |
-| RoPE theta | 10000 |
-| Max positions | 1048576 |
-| Target model | GLM-5.3-Flash (45 layers), target_layer_ids **[5, 14, 24, 33, 42]** (5 layers) |
-
-### DFlash block config (from `dflash_config`)
-
-| Key | Value |
-|---|---|
-| block_size | 8 (7 draft tokens per verification step) |
-| conv_group_size | 16 (256 groups over hidden 4096) |
-| conv_kernel_size (taps) | 2 |
-| mask_token_id | 154856 |
-| selector_rank | 256 |
-| selector_top_k | 16 |
-| target_layer_ids | [5, 14, 24, 33, 42] |
-
-### Checkpoint tensors (81 total, BF16)
-
-**Top-level:**
-- `fc.weight` [4096, 20480] — projects concat of 5 target-layer hiddens (5×4096) → draft hidden
-- `hidden_norm.weight` [4096] — RMSNorm after fc
-- `norm.weight` [4096] — final norm
-- No `embed_tokens`, no `lm_head` — draft consumes **target model embeddings** via fc
-
-**Per layer (×5), suffix pattern `layers.{i}.`:**
-- `input_layernorm.weight`, `post_attention_layernorm.weight` [4096]
-- `self_attn.{q,k,v,o}_proj.weight` — [4096,4096], [1024,4096], [1024,4096], [4096,4096]
-- `self_attn.{q,k}_norm.weight` [128] — per-head-dim QK norm
-- `mlp.{gate,up,down}_proj.weight` [12288,4096] ×2, [4096,12288]
-- `attention_conv.base_kernel` [2, 2, 4096] — [side, tap, channel], side 0=input side, 1=output side; tap 0 initialized to 1.0
-- `attention_conv.kernel_projection.weight` [1024, 4096] — outputs 2·taps·num_groups = 2·2·256 = 1024
-- `mlp_conv.base_kernel` [2, 2, 4096]
-- `mlp_conv.kernel_projection.weight` [1024, 4096]
-
-**Candidate selector:**
-- `candidate_selector.hidden_projection.weight` [256, 4096]
-- `candidate_selector.predecessor_codebook` [154880, 256]
-- `candidate_selector.successor_codebook` [154880, 256]
-
-### Forward pass (per verification step)
-
-1. **Target feature injection.** Target model (GLM-5.3-Flash) runs its forward with `set_embeddings_layer_inp([5,14,24,33,42], true)`. At the anchor position, the *input embeddings* (pre-attention hidden states) of those 5 layers are concatenated → [1, 20480].
-2. **Project + normalize.** `h0 = hidden_norm(fc(concat))` → [1, 4096]. (Note: SGLang name maps `encoder.output_norm_enc.weight` → `hidden_norm.weight`; native export aliases exist.)
-3. **Mask block formation.** Input block = `[h0, mask_emb × 7]` where mask_emb is the target model's embedding row for `mask_token_id` (154856), i.e. gathered from the **target** embedding table. Positions for the 8 block slots are anchor_pos..anchor_pos+7 with RoPE.
-4. **Per layer (5 layers):**
-   a. Pre-norm RMSNorm (`input_layernorm`)
-   b. **attention_conv.prepare**: `coef = kernel_projection(h).reshape(…, 2, taps, groups)`; side-0 dynamic conv applied to h (`_grouped_conv` with `base_kernel[0]`), side-1 coefficients stashed
-   c. **GQA attention** (non-causal within block, sliding window 2048 across blocks), QK-norm before RoPE
-   d. **attention_conv.finish**: side-1 dynamic conv on attn output
-   e. Pre-norm RMSNorm (`post_attention_layernorm`) with fused residual
-   f. **mlp_conv.prepare/finish** wrapping SwiGLU MLP identically
-5. **Final norm** (`norm.weight`)
-6. **Candidate lattice build** (`CandidateSelector.build_lattice`):
-   - `hidden_r = hidden_projection(h)` → [8, 256] (per block slot)
-   - Unary logits: draft hiddens projected through the **target lm_head** (vocab rows), NOT a draft-owned head — see `_project_candidate_logits`; top-K=16 candidates per slot via radix top-k
-   - Edge scores: `score[b,e,p,c] = unary[b,e,c] + <A[pred]·hidden_r, B[c]>` where pred = candidate at previous slot (anchor id for slot 0), A = predecessor_codebook, B = successor_codebook
-7. **Path sampling** (`sample_path` → `_follow_maps`): Viterbi-style walk of the K×K transition lattice picking the max-score coherent path of 7 candidate ids.
-
-**Grouped dynamic conv (`_grouped_conv`)** — the core novelty, port exactly:
-```python
-blocks = h.unflatten(-1, (num_groups, group_size))          # [T, 256, 16]
-coefficients = base.view(1, taps, num_groups, group_size) + delta.unsqueeze(-1)
-out = coefficients[:, 0] * blocks
-position = arange(T) % block_size                            # block-relative position
-for tap in 1..taps-1:
-    shifted = pad(blocks[:-tap], (…, tap, 0))                # shift back by tap
-    out += coefficients[:, tap] * shifted * (position >= tap) # gate at block start
-out = out.flatten(-2)
-```
-`delta` comes from `kernel_projection` output reshaped `[…, 2, taps, num_groups]`; side 0 is used in `prepare` (on the sublayer input), side 1 in `finish` (on the sublayer output).
-
-### Acceptance / verification
-
-Standard greedy: target model verifies the 7-token drafted path in one batched forward; accept the longest matching prefix, then sample the correction. (SGLang also supports sampled acceptance preserving distribution — phase 3 stretch goal, matching cafe-fork `--speculative-use-rejection-sampling` semantics.)
+1. **glm5next target supports arbitrary-layer extraction.**
+   `llama_set_embeddings_layer_inp(ctx_tgt, id, true)` works on glm5next at any layer;
+   mHC multi-stream hidden states auto-collapse via `build_hc_mean` to a single
+   n_embd vector — the exact representation the DFlash2 checkpoint was distilled
+   against. No new hooks needed. (research/04)
+2. **The dflash spec impl accepts 5 target layers.** The `target_layer_ids_n != 3`
+   assert belongs to the *Eagle3* impl only; the DFlash impl asserts `> 0`. (research/03, speculative.cpp:962)
+3. **The model class GQA branch matches our checkpoint exactly**: q/k/v/o proj +
+   per-head q_norm/k_norm (RMSNorm over head_dim 128, applied BEFORE RoPE — verified
+   in SGLang's Triton kernel). (research/01)
+4. **Grouped dynamic conv tensors already exist**: `attn_conv_base` [n_embd, kernel, 2],
+   `attn_conv_proj`, and the selector trio. Note the GGUF conv base layout is
+   `[n_embd, kernel, 2]` vs checkpoint's `[2, 2, 4096]` (side, tap, channel) — the
+   converter must transpose accordingly. (research/05, dflash.cpp:235-238)
+5. **Layer indexing is off by one**: llama.cpp `target_layers` metadata is 1-indexed;
+   the HF `dflash_config.target_layer_ids` is 0-indexed. The existing converter
+   applies `+1`. Our [5,14,24,33,42] must become [6,15,25,34,43]. A silent off-by-one
+   here produces plausible-but-garbage drafts. (research/05, qwen.py:709)
+6. **Draft KV is materialized, not built**: the worker projects target hidden states
+   through the draft's KV heads and writes them into the draft KV cache directly
+   (the `batch_inject` embd path). The cafe/glm5 framework implements this via
+   `llama_decode` with an embd batch. (research/02, research/03)
+7. **Unary logits borrow the target's lm_head** (`_project_candidate_logits`); the
+   selector's top_k=16 walk (`_score_edges` + `_follow_maps`) then picks the coherent
+   7-token path. The llama.cpp impl already structures this. (research/01, research/03)
+8. **Reference GGUF exists**: `incoai/Qwen3.8-27B-DFlash2-GGUF` (Q4_K_M) — known-good
+   output of the same converter path; use it to diff metadata/tensor naming.
+   (research/06)
+9. **block_size=8** for our checkpoint (7 draft tokens/step). The impl default is 16;
+   model metadata must always win. (research/02)
 
 ## Requirements
 
-### REQ-1: GGUF converter (`tools/convert_dflash2_to_gguf.py`)
+### REQ-1: Converter run + parity (primary deliverable)
 
-- Reads `model.safetensors` + `config.json` from `incoai/GLM-5.3-Flash-DFlash2`
-- Emits single GGUF with:
-  - `general.architecture = "dflash2"`
-  - All 81 tensors mapped to llama.cpp names (see Tensor Map below)
-  - Metadata: `dflash2.block_size=8`, `dflash2.conv_group_size=16`, `dflash2.conv_taps=2`, `dflash2.selector_rank=256`, `dflash2.selector_top_k=16`, `dflash2.target_layer_ids="5,14,24,33,42"`, `dflash2.mask_token_id=154856`, `dflash2.is_causal=false`, `dflash2.sliding_window=2048`
-  - Vocabulary: copy GLM-5.3-Flash tokenizer (draft has none of its own)
-  - Output dtype: BF16 (1.9 GB); optional Q8_0 for the conv/codebook tensors is phase-4 stretch
-- **Parity gate:** converter output loads in a python reader with identical tensor shapes/dtypes and metadata keys.
+Run the glm5 fork's converter on `incoai/GLM-5.3-Flash-DFlash2`:
 
-### REQ-2: llama.cpp model class (`src/models/dflash2.cpp`)
+- Vocab: from the GLM-5.3-Flash GGUF/target dir (draft has none) — eagle3-style
+  `set_vocab` from target_model_dir
+- Metadata: `dflash.block_size=8`, `conv_kernel_size=2`, `conv_group_size=16`,
+  `selector_rank=256`, `selector_top_k=16`, `target_layers=[6,15,25,34,43]` (+1 applied),
+  `mask_token_id=154856`
+- Tensor names per the existing mapping (fc, enc_output_norm, blk.N.*, selector_*)
+- **Parity gates:**
+  a. Tensor inventory + shapes match rev-1 table (81 tensors)
+  b. Metadata diff vs `incoai/Qwen3.8-27B-DFlash2-GGUF` shows only model-specific
+     differences
+  c. Conv base transposed from [2,2,4096] to [4096,2,2]... verify actual expected
+     layout [n_embd, kernel, 2] with a golden test
+- If the converter rejects `DFlash2DraftModel` arch name: register the alias
+  (`@ModelBase.register("DFlash2DraftModel")`) — smallest possible patch
 
-- New `LLM_ARCH_DFLASH2` ("dflash2") registered in `llama-arch.cpp`, distinct from existing DSV4-family `LLM_ARCH_DFLASH`
-- `llama_model_dflash2` implementing:
-  - hparams: block_size, conv fields, selector fields, target_layer_ids (5 entries — assert exactly 5, error message pointing at DSV4 dflash confusion)
-  - tensor load for all 81 tensors
-  - build_graph implementing the forward pass above, CPU-backend-first (ggml ops: rms_norm, mul_mat, conv via elementwise ops — no custom CUDA kernels required; the grouped conv is expressible as reshape + broadcast multiply + shifted add, per the reference pseudocode)
-  - non-causal attention within block: reuse existing non-causal path used by dflash arch (`llama_set_causal_attn(false)`)
-  - sliding-window attention across blocks
-  - QK-norm (per-head RMSNorm over head_dim 128) before RoPE
-- **Parity gate:** given identical inputs (fixed seed, fp32), hidden_states after each layer match the SGLang reference within 1e-3 relative (test harness in REQ-4)
+### REQ-2: Load + spec-decode smoke test
 
-### REQ-3: spec-decode integration
+- `llama-server` (glm5 fork) + GLM-5.3-Flash IQ4_XS target + `--spec-type draft-dflash
+  -md dflash2-glm.gguf`
+- Gates: server starts, draft_n > 0 in timings, no asserts
+- The `!= 3`/5-layer question is already resolved (fact 2) — no fork patch expected
 
-Base fork: **`quimmedes/cafe-llama.cpp`** (has the multi-algorithm spec framework + `common_speculative_impl_draft_dflash` reference) **merged with unsloth's `glm5next/upstream`** (has the GLM-5.3-Flash target arch).
+### REQ-3: Correctness validation
 
-- New `common_speculative_impl_draft_dflash2` (fork of the existing dflash impl, ~300 lines different):
-  - Reads `dflash2.target_layer_ids` metadata (5 ids) instead of asserting 3
-  - Calls `llama_set_embeddings_layer_inp(ctx_tgt, id, true)` for the 5 layers on the **glm5next** target
-  - Block-diffusion draft loop: inject target features → 1 forward → lattice → 7-token path
-  - Verification via existing framework (`prepare_for_verify` path already handles dflash per cafe fork)
-- Server flags: `--spec-type draft-dflash2 -md dflash2.gguf` (auto-detected by arch)
+- Golden test: run SGLang reference (CPU, torch) on a canned prompt, dump draft
+  hiddens + proposed path; replay in llama.cpp; match within 1e-3 rel
+- End-to-end: acceptance length on ~50 agentic prompts; gate ≥ 5.0 (published 5.78)
+- Sanity: greedy outputs with spec on == greedy outputs with spec off (lossless claim)
 
-### REQ-4: test harness (`tests/test-dflash2.cpp` + `tests/ref/dflash2_ref.py`)
+### REQ-4: CPU benchmark + publish
 
-- `dflash2_ref.py`: loads checkpoint in PyTorch (CPU), runs the forward on canned inputs, dumps per-layer hiddens + final lattice path as `.bin` golden files
-- `test-dflash2.cpp`: loads the GGUF, replays inputs, compares against goldens (1e-3 rel tol)
-- End-to-end: acceptance-length measurement on 50 GSM8K-style prompts vs published 5.78 (GSM8K); target ≥ 5.0 (87% of published)
+- ucs03 solo run: t/s vs 1.32 baseline, acceptance %, wall-clock on the standard
+  3-task agentic suite
+- Publish: GGUF on HF (CC BY-NC-ND 4.0 attribution), notes to incoai + llama.cpp
 
-### REQ-5: benchmark + publish
+## Risks (updated)
 
-- Benchmark: GLM-5.3-Flash IQ4_XS + DFlash2 on ucs03 (30-thread dual-Xeon): t/s vs 1.32 baseline
-- If acceptance ≥ 5.0 and speedup ≥ 3x: publish GGUF to HF (CC BY-NC-ND 4.0, matching source license) + upstream PR to llama.cpp + note to incoai
-
-## Tensor Map (safetensors → GGUF)
-
-| safetensors | GGUF (llama.cpp names) |
-|---|---|
-| `fc.weight` | `fc.weight` (new tensor `LLM_TENSOR_FC`) |
-| `hidden_norm.weight` | `enc_output_norm.weight` |
-| `norm.weight` | `output_norm.weight` |
-| `layers.{i}.input_layernorm.weight` | `blk.{i}.attn_norm.weight` |
-| `layers.{i}.post_attention_layernorm.weight` | `blk.{i}.ffn_norm.weight` |
-| `layers.{i}.self_attn.q_proj.weight` | `blk.{i}.attn_q.weight` |
-| `layers.{i}.self_attn.k_proj.weight` | `blk.{i}.attn_k.weight` |
-| `layers.{i}.self_attn.v_proj.weight` | `blk.{i}.attn_v.weight` |
-| `layers.{i}.self_attn.o_proj.weight` | `blk.{i}.attn_output.weight` |
-| `layers.{i}.self_attn.q_norm.weight` | `blk.{i}.attn_q_norm.weight` |
-| `layers.{i}.self_attn.k_norm.weight` | `blk.{i}.attn_k_norm.weight` |
-| `layers.{i}.mlp.gate_proj.weight` | `blk.{i}.ffn_gate.weight` |
-| `layers.{i}.mlp.up_proj.weight` | `blk.{i}.ffn_up.weight` |
-| `layers.{i}.mlp.down_proj.weight` | `blk.{i}.ffn_down.weight` |
-| `layers.{i}.attention_conv.base_kernel` | `blk.{i}.attn_conv_base.weight` (shape [2,2,4096]) |
-| `layers.{i}.attention_conv.kernel_projection.weight` | `blk.{i}.attn_conv_proj.weight` |
-| `layers.{i}.mlp_conv.base_kernel` | `blk.{i}.ffn_conv_base.weight` |
-| `layers.{i}.mlp_conv.kernel_projection.weight` | `blk.{i}.ffn_conv_proj.weight` |
-| `candidate_selector.hidden_projection.weight` | `selector_hidden_proj.weight` |
-| `candidate_selector.predecessor_codebook` | `selector_predecessor.weight` |
-| `candidate_selector.successor_codebook` | `selector_successor.weight` |
-
-## Risks & Unknowns
-
-1. **Unary logits use the TARGET's lm_head.** The draft itself cannot produce candidate logits standalone — llama.cpp draft contexts currently own their vocab head. Resolution: the spec impl must run the target's lm_head on draft hiddens (the cafe framework's `ctx_dft`/`ctx_tgt` split supports cross-model calls; verify the `llama_set_embeddings_*` hooks expose what we need). *This is the #1 technical risk — prototype in Phase 2 before writing the full port.*
-2. **Mask embedding comes from the target embedding table** (row 154856), not draft weights — the draft GGUF is not standalone-loadable without the target running alongside. Converter should record `dflash2.mask_token_id` and the loader must gather the mask row from target context.
-3. **Feature extraction point:** `llama_set_embeddings_layer_inp` captures *input* embeddings (pre-attention) of target layers — must confirm glm5next model class supports extraction at 5 arbitrary mid-network layers, and that the SGLang training-time extraction points match (SGLang's `set_hidden_states_capture` equivalent).
-4. **Non-causal attention**: existing dflash impl already sets `llama_set_causal_attn(ctx_dft, false)` — same requirement, reuse.
-5. **RoPE across block slots**: positions continue from anchor (anchor_pos + slot). Confirm the reference uses continuous positions, not restarted — verify in Phase 2 golden test.
-6. **License**: CC BY-NC-ND 4.0 — non-commercial, no derivatives of the *weights*. A GGUF conversion is a format conversion, not a derivative work in the quantization sense, but ND language may be read strictly; flag in the HF README and keep the converter separate from the weights.
+| # | Risk | Mitigation |
+|---|---|---|
+| 1 | Converter doesn't know `DFlash2DraftModel` / `glm5_next` arch names | Register alias; 1-line patch |
+| 2 | Off-by-one layer ids silently corrupt drafting | Fact 5; verify against reference GGUF metadata + golden test |
+| 3 | Conv base tensor layout mismatch ([2,2,4096] vs [n_embd,kernel,2]) | Explicit golden test on conv output |
+| 4 | mHC collapse (`build_hc_mean`) doesn't match SGLang's extraction for GLM | Golden test REQ-3; if mismatch, hook SGLang's exact reduction |
+| 5 | block_size default 16 overrides trained 8 | Assert metadata present in converter output |
+| 6 | License: CC BY-NC-ND 4.0 weights | Non-commercial HF upload with attribution; converter is ours (MIT) |
 
 ## Phases
 
-- **Phase 0 (done)**: repo, this spec, source analysis
-- **Phase 1**: converter + golden test tensors dumped from SGLang reference (de-risks REQ-1, REQ-4 partially)
-- **Phase 2**: fork merge (cafe + glm5next) — build only, no dflash2; then `llama_model_dflash2` skeleton + forward-pass parity vs goldens (de-risks #1, #3, #5)
-- **Phase 3**: spec impl + end-to-end speculative decode
-- **Phase 4**: benchmarks, Q8_0 conv tensors, HF publish, upstream PR
-
-## References
-
-- Checkpoint: `incoai/GLM-5.3-Flash-DFlash2` (HF, CC BY-NC-ND 4.0)
-- SGLang reference: `sglang/srt/models/dflash.py` + `srt/speculative/dflash_worker_v2.py` (PR #36708), installed at `/mnt/ollama/models/glm-5.3-flash/sglang-venv/lib/python3.12/site-packages/sglang/`
-- Target arch: `unslothai/llama.cpp` branch `glm5next/upstream` (local: `/mnt/ollama/models/llama-cpp-glm5/`)
-- Spec framework: `quimmedes/cafe-llama.cpp` (local: `/mnt/ollama/models/llama-cpp-cafe/`)
-- Benchmark claims: https://inco.ai/blog/dflash2/ (5.78 acceptance GSM8K, 2.79x @ c1 MATH-500)
+- **Phase A (now)**: REQ-1 — convert, diff vs reference GGUF
+- **Phase B**: REQ-2 — smoke test spec decode
+- **Phase C**: REQ-3 — golden + acceptance validation
+- **Phase D**: REQ-4 — benchmark, publish
