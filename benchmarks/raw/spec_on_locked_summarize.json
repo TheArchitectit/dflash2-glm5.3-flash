@@ -1,0 +1,112 @@
+[
+  {
+    "id": "summarize-00",
+    "wall_s": 196.34,
+    "tokens": 128,
+    "tps": 0.652,
+    "draft_n": 133,
+    "draft_n_accepted": 93,
+    "acc_len": 3.657,
+    "out_len": 544,
+    "out": "The user wants a summary of the quarterly report in exactly 4 bullet points, no preamble. The text is repeated 4 times (same content duplicated). I need to summarize the key points.\n\nKey themes:\n1. Regional growth: APAC led at 23% QoQ, EMEA 11%, Americas 8%; currency headwinds in EMEA; throughput improved across all regions, unit economics steady.\n2. Product line: Platform tier drove 61% of new ARR; legacy on-prem renewals declined 14% due to migration incentives; add-on modules had highest expansion revenue per account.\n3. Infrastructure"
+  },
+  {
+    "id": "summarize-01",
+    "wall_s": 77.39,
+    "tokens": 128,
+    "tps": 1.654,
+    "draft_n": 113,
+    "draft_n_accepted": 97,
+    "acc_len": 4.129,
+    "out_len": 534,
+    "out": "The user wants a summary of the quarterly report in exactly 4 bullet points, no preamble. The text is repeated 5 times but the content is identical. Let me extract the key themes:\n\n1. Regional performance: APAC led at 23% QoQ, EMEA 11%, Americas 8%, currency headwinds in EMEA, LatAm small but fast-growing. Overall throughput improved across all regions, unit economics steady, opex up modestly due to infrastructure scaling.\n\n2. Product line: platform tier drove 61% of new ARR, legacy on-prem renewals declined 14% due to migration"
+  },
+  {
+    "id": "summarize-02",
+    "wall_s": 82.06,
+    "tokens": 128,
+    "tps": 1.56,
+    "draft_n": 126,
+    "draft_n_accepted": 95,
+    "acc_len": 3.879,
+    "out_len": 514,
+    "out": "The user wants a summary of the quarterly report in exactly 4 bullet points, no preamble. The text is repeated multiple times but contains identical content. Let me extract key themes:\n\n1. Regional growth: APAC led at 23% QoQ, EMEA 11%, Americas 8%; currency headwinds in EMEA; LatAm small but fast-growing\n2. Product: platform tier drove 61% of new ARR; legacy on-prem renewals declined 14%; add-on modules highest expansion revenue per account\n3. Infrastructure: compute spend +19% vs 31% token growth (improving"
+  },
+  {
+    "id": "summarize-03",
+    "wall_s": 83.68,
+    "tokens": 128,
+    "tps": 1.53,
+    "draft_n": 124,
+    "draft_n_accepted": 94,
+    "acc_len": 3.765,
+    "out_len": 559,
+    "out": "The user wants a summary of the quarterly report in exactly 4 bullet points, no preamble. The text is repeated multiple times but contains one unique set of content. Let me extract the key points:\n\n1. Regional performance: APAC led growth at 23% QoQ, EMEA 11%, Americas 8%; currency headwinds in EMEA; LatAm small but fast-growing; throughput improved across all regions, unit economics steady.\n\n2. Product line: platform tier drove 61% of new ARR; legacy on-prem renewals declined 14% due to migration incentives; add-on modules had highest expansion revenue"
+  },
+  {
+    "id": "summarize-04",
+    "wall_s": 184.9,
+    "tokens": 128,
+    "tps": 0.692,
+    "draft_n": 133,
+    "draft_n_accepted": 93,
+    "acc_len": 3.657,
+    "out_len": 544,
+    "out": "The user wants a summary of the quarterly report in exactly 4 bullet points, no preamble. The text is repeated 4 times (same content duplicated). I need to summarize the key points.\n\nKey themes:\n1. Regional growth: APAC led at 23% QoQ, EMEA 11%, Americas 8%; currency headwinds in EMEA; throughput improved across all regions, unit economics steady.\n2. Product line: Platform tier drove 61% of new ARR; legacy on-prem renewals declined 14% due to migration incentives; add-on modules had highest expansion revenue per account.\n3. Infrastructure"
+  },
+  {
+    "id": "summarize-05",
+    "wall_s": 76.82,
+    "tokens": 128,
+    "tps": 1.666,
+    "draft_n": 113,
+    "draft_n_accepted": 97,
+    "acc_len": 4.129,
+    "out_len": 534,
+    "out": "The user wants a summary of the quarterly report in exactly 4 bullet points, no preamble. The text is repeated 5 times but the content is identical. Let me extract the key themes:\n\n1. Regional performance: APAC led at 23% QoQ, EMEA 11%, Americas 8%, currency headwinds in EMEA, LatAm small but fast-growing. Overall throughput improved across all regions, unit economics steady, opex up modestly due to infrastructure scaling.\n\n2. Product line: platform tier drove 61% of new ARR, legacy on-prem renewals declined 14% due to migration"
+  },
+  {
+    "id": "summarize-06",
+    "wall_s": 81.72,
+    "tokens": 128,
+    "tps": 1.566,
+    "draft_n": 126,
+    "draft_n_accepted": 95,
+    "acc_len": 3.879,
+    "out_len": 514,
+    "out": "The user wants a summary of the quarterly report in exactly 4 bullet points, no preamble. The text is repeated multiple times but contains identical content. Let me extract key themes:\n\n1. Regional growth: APAC led at 23% QoQ, EMEA 11%, Americas 8%; currency headwinds in EMEA; LatAm small but fast-growing\n2. Product: platform tier drove 61% of new ARR; legacy on-prem renewals declined 14%; add-on modules highest expansion revenue per account\n3. Infrastructure: compute spend +19% vs 31% token growth (improving"
+  },
+  {
+    "id": "summarize-07",
+    "wall_s": 82.09,
+    "tokens": 128,
+    "tps": 1.559,
+    "draft_n": 124,
+    "draft_n_accepted": 94,
+    "acc_len": 3.765,
+    "out_len": 559,
+    "out": "The user wants a summary of the quarterly report in exactly 4 bullet points, no preamble. The text is repeated multiple times but contains one unique set of content. Let me extract the key points:\n\n1. Regional performance: APAC led growth at 23% QoQ, EMEA 11%, Americas 8%; currency headwinds in EMEA; LatAm small but fast-growing; throughput improved across all regions, unit economics steady.\n\n2. Product line: platform tier drove 61% of new ARR; legacy on-prem renewals declined 14% due to migration incentives; add-on modules had highest expansion revenue"
+  },
+  {
+    "id": "summarize-08",
+    "wall_s": 185.21,
+    "tokens": 128,
+    "tps": 0.691,
+    "draft_n": 133,
+    "draft_n_accepted": 93,
+    "acc_len": 3.657,
+    "out_len": 544,
+    "out": "The user wants a summary of the quarterly report in exactly 4 bullet points, no preamble. The text is repeated 4 times (same content duplicated). I need to summarize the key points.\n\nKey themes:\n1. Regional growth: APAC led at 23% QoQ, EMEA 11%, Americas 8%; currency headwinds in EMEA; throughput improved across all regions, unit economics steady.\n2. Product line: Platform tier drove 61% of new ARR; legacy on-prem renewals declined 14% due to migration incentives; add-on modules had highest expansion revenue per account.\n3. Infrastructure"
+  },
+  {
+    "id": "summarize-09",
+    "wall_s": 77.31,
+    "tokens": 128,
+    "tps": 1.656,
+    "draft_n": 113,
+    "draft_n_accepted": 97,
+    "acc_len": 4.129,
+    "out_len": 534,
+    "out": "The user wants a summary of the quarterly report in exactly 4 bullet points, no preamble. The text is repeated 5 times but the content is identical. Let me extract the key themes:\n\n1. Regional performance: APAC led at 23% QoQ, EMEA 11%, Americas 8%, currency headwinds in EMEA, LatAm small but fast-growing. Overall throughput improved across all regions, unit economics steady, opex up modestly due to infrastructure scaling.\n\n2. Product line: platform tier drove 61% of new ARR, legacy on-prem renewals declined 14% due to migration"
+  }
+]

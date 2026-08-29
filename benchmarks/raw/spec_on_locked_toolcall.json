@@ -1,0 +1,112 @@
+[
+  {
+    "id": "toolcall-00",
+    "wall_s": 61.0,
+    "tokens": 40,
+    "tps": 0.656,
+    "draft_n": 38,
+    "draft_n_accepted": 30,
+    "acc_len": 4.0,
+    "out_len": 81,
+    "out": "The user wants the weather in Reykjavik in metric units. Simple single tool call."
+  },
+  {
+    "id": "toolcall-01",
+    "wall_s": 27.84,
+    "tokens": 66,
+    "tps": 2.371,
+    "draft_n": 54,
+    "draft_n_accepted": 50,
+    "acc_len": 4.125,
+    "out_len": 107,
+    "out": "The user wants to find flights from SFO to NRT on 2026-09-14. I have a search_flights tool. Let me call it."
+  },
+  {
+    "id": "toolcall-02",
+    "wall_s": 18.86,
+    "tokens": 43,
+    "tps": 2.28,
+    "draft_n": 38,
+    "draft_n_accepted": 33,
+    "acc_len": 4.3,
+    "out_len": 127,
+    "out": "The user wants to know the current temperature in Phoenix in Fahrenheit. I'll use the get_weather function with imperial units."
+  },
+  {
+    "id": "toolcall-03",
+    "wall_s": 61.78,
+    "tokens": 115,
+    "tps": 1.861,
+    "draft_n": 132,
+    "draft_n_accepted": 76,
+    "acc_len": 2.949,
+    "out_len": 408,
+    "out": "The user wants a count of active users from the users table. I'll run a SQL query against the analytics DB. I need to guess the schema - likely there's an \"active\" column or status. Let me write a reasonable query: SELECT COUNT(*) FROM users WHERE active = true.\n\nSince I don't know the exact schema, I could first inspect, but simplest is to run the count query with a common assumption. Let me just run it."
+  },
+  {
+    "id": "toolcall-04",
+    "wall_s": 13.45,
+    "tokens": 35,
+    "tps": 2.603,
+    "draft_n": 30,
+    "draft_n_accepted": 27,
+    "acc_len": 4.375,
+    "out_len": 71,
+    "out": "The user wants weather for Cape Town in metric units. Simple tool call."
+  },
+  {
+    "id": "toolcall-05",
+    "wall_s": 21.58,
+    "tokens": 57,
+    "tps": 2.641,
+    "draft_n": 52,
+    "draft_n_accepted": 44,
+    "acc_len": 4.385,
+    "out_len": 87,
+    "out": "The user wants flights from BER to JFK on 2026-08-30. I'll use the search_flights tool."
+  },
+  {
+    "id": "toolcall-06",
+    "wall_s": 117.05,
+    "tokens": 256,
+    "tps": 2.187,
+    "draft_n": 320,
+    "draft_n_accepted": 166,
+    "acc_len": 2.844,
+    "out_len": 1110,
+    "out": "The user wants to run a SQL query to get total revenue from orders for last month. I don't know the exact schema of the database, but I can make a reasonable attempt. Let me think about what \"last month\" means \u2014 I don't know the current date. I could use SQL date functions to compute last month relative to the current date.\n\nA common approach:\n```sql\nSELECT SUM(total_amount) AS total_revenue\nFROM orders\nWHERE order_date >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')\n  AND order_date < DATE_TRUNC('month', CURRENT_DATE);\n```\n\nOr using strftime for SQLite. Since I don't know the dialect, I'll try a standard SQL that works. Let me just run it and see if it errors; if so, adjust.\n\nThe instruction says to make independent calls in the same block. There's only one call needed here. I could first explore schema, but simpler: run the query directly. If it fails, adapt.\n\nLet me write a portable-ish query. I'll go with PostgreSQL-style since \"analytics DB\" often is. Actually, let me first check the schema? That would be a dependent decision. But the user said \"run it\", so just run the query. I"
+  },
+  {
+    "id": "toolcall-07",
+    "wall_s": 29.16,
+    "tokens": 63,
+    "tps": 2.16,
+    "draft_n": 64,
+    "draft_n_accepted": 42,
+    "acc_len": 3.0,
+    "out_len": 191,
+    "out": "The user wants weather in Buenos Aires and advice on whether they need a jacket. I'll call get_weather with the city. Units \u2014 metric is fine (Buenos Aires uses Celsius). Let me make the call."
+  },
+  {
+    "id": "toolcall-08",
+    "wall_s": 74.99,
+    "tokens": 168,
+    "tps": 2.24,
+    "draft_n": 190,
+    "draft_n_accepted": 114,
+    "acc_len": 3.111,
+    "out_len": 511,
+    "out": "The user asks which airport code is for London Heathrow (LHR), and to search flights LHR to LAX on 2026-10-01. These are independent-ish: the first question I can answer from knowledge (LHR). The flight search depends on knowing the code, but I already know it's LHR. So I can just call search_flights directly with LHR, LAX, 2026-10-01.\n\nNo dependencies needed since I know LHR is Heathrow. Make the single call.London Heathrow's airport code is **LHR**. Let me search for flights from LHR to LAX on that date:"
+  },
+  {
+    "id": "toolcall-09",
+    "wall_s": 109.71,
+    "tokens": 256,
+    "tps": 2.333,
+    "draft_n": 292,
+    "draft_n_accepted": 171,
+    "acc_len": 3.012,
+    "out_len": 1016,
+    "out": "The user wants to run a query for the top 10 products by units sold. I have a run_query tool that runs read-only SQL SELECT against an analytics DB.\n\nI don't know the exact schema, but I can make a reasonable guess. Common tables might be \"products\" and \"sales\" or \"orders\". Let me try a query. Since I don't know the schema, I could first inspect it \u2014 but there's no schema listing tool. I could try a query like:\n\nSELECT product_name, SUM(units_sold) AS total_units FROM sales GROUP BY product_name ORDER BY total_units DESC LIMIT 10;\n\nOr maybe there's a products table with units_sold column. Let me just try a reasonable one and adapt based on the error. The instructions say to make independent calls in the same block. I could try one query first; if it fails, adjust.\n\nLet me attempt: SELECT product_id, product_name, SUM(units_sold) AS total_units_sold FROM sales GROUP BY product_id, product_name ORDER BY total_units_sold DESC LIMIT 10;\n\nI'll run that single call since dependent adjustments may be needed."
+  }
+]

@@ -1,0 +1,33 @@
+[toolcall 1/10] tps=0.656 acc=4.0
+[toolcall 2/10] tps=2.371 acc=4.125
+[toolcall 3/10] tps=2.28 acc=4.3
+[toolcall 4/10] tps=1.861 acc=2.949
+[toolcall 5/10] tps=2.603 acc=4.375
+[toolcall 6/10] tps=2.641 acc=4.385
+[toolcall 7/10] tps=2.187 acc=2.844
+[toolcall 8/10] tps=2.16 acc=3.0
+[toolcall 9/10] tps=2.24 acc=3.111
+[toolcall 10/10] tps=2.333 acc=3.012
+RESULT task=toolcall prompts=10/10 mean_tps=2.133 mean_acc_len=3.61 wall_s=535
+[multiturn 1/10] tps=1.936 acc=2.844
+[multiturn 2/10] tps=1.879 acc=2.667
+[multiturn 3/10] tps=1.696 acc=2.438
+[multiturn 4/10] tps=2.006 acc=3.084
+[multiturn 5/10] tps=1.935 acc=2.813
+[multiturn 6/10] tps=1.943 acc=3.23
+[multiturn 7/10] tps=1.904 acc=2.844
+[multiturn 8/10] tps=1.655 acc=2.37
+[multiturn 9/10] tps=1.825 acc=2.667
+[multiturn 10/10] tps=1.855 acc=2.813
+RESULT task=multiturn prompts=10/10 mean_tps=1.863 mean_acc_len=2.78 wall_s=1348
+[summarize 1/10] tps=0.652 acc=3.657
+[summarize 2/10] tps=1.654 acc=4.129
+[summarize 3/10] tps=1.56 acc=3.879
+[summarize 4/10] tps=1.53 acc=3.765
+[summarize 5/10] tps=0.692 acc=3.657
+[summarize 6/10] tps=1.666 acc=4.129
+[summarize 7/10] tps=1.566 acc=3.879
+[summarize 8/10] tps=1.559 acc=3.765
+[summarize 9/10] tps=0.691 acc=3.657
+[summarize 10/10] tps=1.656 acc=4.129
+RESULT task=summarize prompts=10/10 mean_tps=1.323 mean_acc_len=3.86 wall_s=1128
