@@ -120,3 +120,19 @@ this arch. Implementing the glm5next NextN graph (enorm/hnorm/eh_proj + KDA
 state for the nextn block) is a substantial fork-side feature — deferred, out
 of v0.0.1 scope. **DFlash2 remains the only working drafter for this target on
 this box.**
+
+## Corrected-ruler re-baseline, 8-prompt suite (2026-08-29, task #31 fallout)
+
+Same 8 prompts / n_predict 32 as the original A/B, formula fixed
+(steps = predicted_n - accepted):
+
+| config | acc_len (old formula) | acc_len (corrected) | t/s |
+|---|---|---|---|
+| n_max 7 baseline | 2.38 | (not re-run; old figure mildly inflated) | 1.09 |
+| **n_max 4 + p_min 0.4 (locked)** | 3.91 (inflated) | **1.79** | **1.65** |
+
+The acceptance delta from the locked config was formula artifact (dn/7 under
+p_min gating); the **t/s win is real** (+51% same-suite). Cross-check: 50-prompt
+server-side ground truth 2.76 and GSM8K 2.69 are higher than this 1.79 because
+n_predict 32 under-weights accepted tails vs amortized first-step overhead —
+suites are not interchangeable; each number is tagged with its ruler + suite.
