@@ -47,8 +47,16 @@ verify cost is what matters on this bandwidth-bound box).
 
 | Metric | Value | Tier |
 |---|---|---|
-| Throughput | 1.44 t/s | **T2 WIN** |
-| Acceptance | 3.91 | **T3 TARGET** |
+| Throughput (8-prompt A/B) | 1.44 t/s | **T2 WIN** |
+| Throughput (50-prompt gate) | 1.864 t/s | **T3 TARGET** |
+| Acceptance (50-prompt, server-side ground truth) | 2.76 | **T2 WIN** |
+
+Note: the acceptance figure was corrected same-day — the client bench formula
+assumed full 7-token blocks (`steps = draft_n/7`), but the locked config drafts
+≤4 under `p_min` gating. Recomputed from the server's own journal stats (the
+identity `steps = predicted_n − accepted`, matching server-context.cpp:664),
+mean acceptance is 2.76, not 3.91. Throughput numbers never used that formula
+and are unaffected.
 
 ## How each tier is verified
 

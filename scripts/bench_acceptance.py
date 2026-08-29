@@ -121,8 +121,13 @@ def main():
         t = r.get("timings", {})
         dn = t.get("draft_n", 0)
         da = t.get("draft_n_accepted", 0)
+        pn = t.get("predicted_n", 0)
         tps = t.get("predicted_per_second", 0.0)
-        steps = dn / 7 if dn > 0 else 0
+        # exact verify-step count: every step emits >=1 token (bonus or reject),
+        # so predicted_n = accepted_draft_tokens + steps. server-context.cpp:664
+        # uses the same identity. (The old dn/7 assumed n_max=7 full blocks and
+        # OVERESTIMATES under p_min gating, which shortens drafts.)
+        steps = pn - da if dn > 0 else 0
         acc_len = (da / steps + 1) if steps > 0 else 1.0
         total_accepted += da
         total_steps += steps
