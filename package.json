@@ -1,0 +1,9 @@
+{
+  "name": "dflash2-llamacpp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DFlash2 block-diffusion draft model ported to llama.cpp GGUF for CPU speculative decoding",
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}

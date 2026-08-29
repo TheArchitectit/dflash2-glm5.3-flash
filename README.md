@@ -31,6 +31,30 @@ No GGUF conversion of DFlash2 exists. This repo provides:
 | llama.cpp fork with dflash spec framework | `quimmedes/cafe-llama.cpp` |
 | DFlash blog | https://inco.ai/blog/dflash2/ |
 
+## Quality gates
+
+This repo uses the [DevGate Agentic Framework](https://github.com/TheArchitectit/DevGate-Agentic-Framework), vendored at `.devgate/` (plain copy, BSD 3-Clause — see `.devgate/LICENSE`).
+
+**File-size limit:** all source files must stay under 500 lines (soft warning at 300). When a file hits the soft limit, split it rather than squeezing toward the hard limit.
+
+Run the gates before committing (all must pass):
+
+```bash
+# Pattern scan (known failure patterns, any language)
+node .devgate/scripts/guardrails-scan.mjs
+
+# Semantic scan (TS/JS AST — skips automatically, no TS/JS in this repo)
+node .devgate/scripts/semantic-scan.mjs
+
+# Regression check: file sizes, package audit, failure-registry patterns
+python3 .devgate/scripts/regression_check.py --all --pre-commit
+
+# Tests (discovers test_*.py / *.test.js; currently the framework's own self-tests)
+node .devgate/scripts/run-tests.mjs
+```
+
+Sprint bugs that must not regress are recorded in `.devgate/.guardrails/failure-registry.jsonl` (append-only). After fixing a bug, add an entry with `python3 .devgate/scripts/log_failure.py --help`.
+
 ## License notes
 
-DFlash2 weights: CC BY-NC-ND 4.0 (research/eval only — no commercial use without inco.ai license). Code in this repo: MIT.
+DFlash2 weights: CC BY-NC-ND 4.0 (research/eval only — no commercial use without inco.ai license). Code in this repo: MIT. DevGate framework: BSD 3-Clause (`.devgate/LICENSE`).

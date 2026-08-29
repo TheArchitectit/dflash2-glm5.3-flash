@@ -1,0 +1,9 @@
+# Python
+__pycache__/
+*.pyc
+
+# Node (DevGate semantic-scan dependency lives here; never commit)
+node_modules/
+
+# GGUF artifacts / model dumps
+*.gguf

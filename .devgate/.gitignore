@@ -1,0 +1,68 @@
+# Dependencies
+node_modules/
+vendor/
+__pycache__/
+*.pyc
+dist/
+build/
+target/
+out/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+
+# Logs
+*.log
+
+# FORBIDDEN — package manager is the ONLY distribution path (PREVENT-DIST-001).
+# Never produce or commit a `.tgz` tarball; tarballs bypass the package manager
+# and don't propagate to other devices. Use `npm publish` / `cargo publish` /
+# `pip install` / etc. only.
+*.tgz
+
+# Local runtime state
+.devgate-state/
+.cache/
+# Database files (if using SQLite — add your own DB patterns here)
+*.db
+*.db-shm
+*.db-wal
+
+# Playwright scratch
+.playwright-mcp/
+*-tab-fixed.png
+
+# Local agent/session state (never track)
+.claude/
+.crew/
+.claw/
+.clawd-todos.json
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Rust build artifacts
+**/target/
+Cargo.lock
+
+# Go build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Temp
+tmp/
