@@ -121,7 +121,30 @@ Run the glm5 fork's converter on `incoai/GLM-5.3-Flash-DFlash2`:
   verification gate for the mHC-collapse fix (Sprint 5.3–5.4): llama.cpp's
   `build_hc_mean` is an unweighted mean (models.h:1350) while SGLang trained
   the draft on gated contractions (mhc.py:1626) — confirmed divergence to fix.
-- **Phase D**: REQ-4 — benchmark, publish.
+- **Phase D (Sprint 4)**: REQ-4 — benchmark, publish. Publish-readiness gates:
+  all DevGate checks green, golden test passed, lossless check 10/10, all
+  published GGUF variants pass every Sprint-1 gate script, HF card carries
+  license + base_model + verified serving recipe.
 - **Phase E (Sprint 5)**: gap closure to +60% (≥2.1 t/s): synth-rate
   calibration, config sweep (n_max, p_min, top-k, threads), mHC extraction fix,
-  lossless re-validation, final benchmark.
+  lossless re-validation, final benchmark feeding the published numbers.
+
+## Release order (hard dependency chain)
+
+```
+Sprint 1 (done) → Sprint 2 (done) → Sprint 3 (golden+lossless)
+                                          │
+                            ┌─────────────┴────────────┐
+                            ▼                          ▼
+                     Sprint 5 (config + mHC fix)   Sprint 4.1-4.4 (bench)
+                            └────────────┬────────────┘
+                                         ▼
+                            Sprint 4.5 (quant variants, gated)
+                                         ▼
+                            Sprint 4.6 (HF upload, gated)
+                                         ▼
+                            Sprint 4.7-4.8 (notes, tag, close)
+```
+
+Nothing uploads to HF until: golden 1e-3 pass, lossless 10/10, all DevGate
+gates green, and every artifact passing the Sprint-1 parity scripts.

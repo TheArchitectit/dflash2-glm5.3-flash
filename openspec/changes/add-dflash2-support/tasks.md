@@ -87,7 +87,10 @@ All gates passed: 3/3 prompts generated, draft_n > 0, zero real asserts
 
 ---
 
-## Sprint 3 — Correctness (Phase C, REQ-3)
+## Sprint 3 — Correctness (Phase C, REQ-3) — the publish blocker
+
+Nothing gets published until this sprint passes. 3.5 (golden, 1e-3) is the gate
+that proves the mHC fix (5.4); 3.6/3.7 prove the lossless claim in the model card.
 
 - [ ] **3.1 Target-hidden fixture dump.** Write `tests/golden/dump_target_hiddens.cpp` (build line links `/mnt/ollama/models/llama-cpp-glm5/build/{src/libllama.a,common/libllama-common.a,ggml/src/libggml*.a}`, includes `include/` + `ggml/include/`): load IQ4_XS target, `llama_set_embeddings_layer_inp(ctx, {6,15,25,34,43}−1 …)` on a canned ~40-token prompt (agentic-style: tool-call JSON), one prefill decode, dump the 5 per-layer hidden vectors (post `build_hc_mean` collapse) + token ids to `tests/golden/fixtures/hiddens.npz`. This is the deployment-realistic hidden source (IQ4_XS target, llama.cpp extraction) — the draft is validated against exactly what it will see in production. Gate: fixture written, shapes [n_tokens, 4096] × 5. Run solo per 2.1 discipline.
 
@@ -107,19 +110,28 @@ All gates passed: 3/3 prompts generated, draft_n > 0, zero real asserts
 
 ## Sprint 4 — Benchmark + Publish (Phase D, REQ-4)
 
+**Publish readiness gates (run before 4.5):**
+- All DevGate gates green (`guardrails-scan`, `regression_check --all --pre-commit`, `run-tests`)
+- Sprint 3 golden test passed at 1e-3; Sprint 5 config finalized; 5.5 lossless 10/10
+- File-size gate: all files < 500 lines
+- The 3 published GGUFs (F16 + Q8_0 + BF16) each pass `check_tensor_inventory` + `diff_gguf_meta` + `check_conv_base`
+- HF upload carries license + base_model + working serving recipe (verified by curl against the running server)
+
 - [ ] **4.1 Define the standard 3-task agentic suite.** Create `benchmarks/tasks/{toolcall,multiturn,summarize}.jsonl` — 10 prompts each: (1) single-turn tool-calling (JSON tool schemas + forced tool_choice), (2) multi-turn tool loop (3-5 rounds), (3) long-prompt (~4-8k ctx) short-output summarization. Runner `scripts/bench_agentic.py`: per task, concurrency 1, fixed seeds, records completion tokens, wall-clock, `timings.draft_n/accepted`, t/s. Gate: suite files + runner committed.
 
 - [ ] **4.2 Baseline arm (spec off).** Solo window per 2.1: run `llama-server-glm5-dflash2` with spec flags removed (or the plain glm5 config) on :8100; run `scripts/bench_agentic.py`; record t/s per task. Cross-check against the historical 1.32 t/s (memory: glm-5-3-flash-cpu-candidate) — if the re-measured baseline deviates > ~20%, note thermals/governor (`cpu-governor.service`) before comparing arms. Gate: baseline numbers recorded.
 
-- [ ] **4.3 Spec arm (draft-dflash on).** Same window, same suite, spec flags on (`--spec-type draft-dflash --spec-draft-n-max 7`). Record t/s, acceptance % (`draft_n_accepted/draft_n`), acceptance length, wall-clock per task. Gate: both arms measured in the same session, no :8086 overlap. **STOP GATE**: spec t/s ≤ baseline t/s → do not publish numbers as a win; diagnose (draft decode cost vs verification savings; prior art: MTP/draft-simple were net losses on Qwen CPU — bandwidth-bound boxes can lose to drafting overhead).
+- [ ] **4.3 Spec arm (draft-dflash on).** Same window, same suite, spec flags on (final config from Sprint 5.2/5.4: `--spec-type draft-dflash --spec-draft-n-max <best> [--spec-draft-p-min <best>]`). Record t/s, acceptance % (`draft_n_accepted/draft_n`), acceptance length, wall-clock per task. Gate: both arms measured in the same session, no :8086 overlap. **STOP GATE**: spec t/s ≤ baseline t/s → do not publish numbers as a win; diagnose (draft decode cost vs verification savings; prior art: MTP/draft-simple were net losses on Qwen CPU — bandwidth-bound boxes can lose to drafting overhead).
 
-- [ ] **4.4 Results write-up.** `benchmarks/results-dflash2-glm.md`: table of both arms × 3 tasks (t/s, acceptance %, accept len, wall-clock), delta vs 1.32 baseline, projection check vs published 5.78/2.42×; note n_max=7, block_size=8, F16 draft, commit f30bed8. Gate: file committed with raw JSON dumps in `benchmarks/raw/`.
+- [ ] **4.4 Results write-up.** `benchmarks/results-dflash2-glm.md`: table of both arms × 3 tasks (t/s, acceptance %, accept len, wall-clock), delta vs 1.32 baseline, projection check vs published numbers; note final n_max/block_size, F16 draft, exact llama.cpp commit + any local patches (mHC fix). Gate: file committed with raw JSON dumps in `benchmarks/raw/`.
 
-- [ ] **4.5 HF publish.** Create HF repo `<user>/GLM-5.3-Flash-DFlash2-GGUF` via `hf` CLI (token present at `~/.cache/huggingface/token`). Upload `dflash2-glm-f16.gguf` (+ optional Q8_0 variant via second `--outtype q8_0` conversion). README must carry: `license: cc-by-nc-nd-4.0` (weights license, risk 6 — converter code itself is MIT in this repo), `base_model: incoai/GLM-5.3-Flash-DFlash2`, inco.ai citation block (from the checkpoint README), and the serving recipe: `llama-server -m <GLM-5.3-Flash GGUF> -md <this repo> --spec-type draft-dflash --spec-draft-n-max 7`. Gate: upload lists both license tag and base_model; serving command verified verbatim against what Sprint 2 actually ran.
+- [ ] **4.5 Quantization variants.** Convert Q8_0 draft: `convert_hf_to_gguf.py --outtype q8_0` (+ BF16 variant for exact-parity users). Each variant passes all three Sprint-1 gate scripts. A/B acceptance vs F16 on the mini-suite — if acceptance drops >2%, publish F16 only and note it. Gate: variant GGUFs gated + measured.
 
-- [ ] **4.6 Notes to incoai + llama.cpp.** (a) z-lab/dflash GitHub discussion or issue: GLM-5.3-Flash draft converted via the merged PR #27342 converter path, CPU results table, pointer to the HF repo. (b) llama.cpp discussion (or ggml-org/llama.cpp discussions): confirmation that the merged DFlash2 path works for a glm5next target on CPU, metadata parity notes, n_max=7 gotcha, link. Gate: both posted, links recorded in `notes.md`.
+- [ ] **4.6 HF publish.** Create HF repo `user001/GLM-5.3-Flash-DFlash2-GGUF` via `hf` CLI (token present at `~/.cache/huggingface/token`). Upload F16 (+Q8_0 if 4.5 passed). README must carry: `license: cc-by-nc-nd-4.0` (weights license, risk 6 — converter code itself is MIT in this repo), `base_model: incoai/GLM-5.3-Flash-DFlash2`, inco.ai citation block (from the checkpoint README), benchmark table from 4.4, and the exact serving recipe used in 4.3 (verify by curl against the live server before writing it into the README). Gate: repo URL responds 200; license tag + base_model visible on the model card; download smoke-test (`hf download` the F16 back and run check_tensor_inventory on it).
 
-- [ ] **4.7 Close out.** Update repo `README.md` status checklist (Phases 0/1/3/4 done — converter used is the fork's, note the rev-2 pivot), append findings to user memory (`glm-5-3-flash-cpu-candidate.md`: measured t/s + acceptance, replacing the 1.32-only picture). Mark OpenSpec change complete; delete `notes.md` scratch or fold into results.
+- [ ] **4.7 Notes to incoai + llama.cpp.** (a) z-lab/dflash GitHub discussion or issue: GLM-5.3-Flash draft converted via the merged PR #27342 converter path, CPU results table, pointer to the HF repo. (b) llama.cpp discussion: confirmation that the merged DFlash2 path works for a glm5next target on CPU, metadata parity notes, n_max gotcha, the mHC finding, link. Gate: both posted, links recorded in `notes.md`.
+
+- [ ] **4.8 Release tag + close out.** Tag the repo (`v1.0.0-dflash2-glm`), update repo README status checklist, append final results to user memory (`glm-5-3-flash-cpu-candidate.md`). If the mHC fix (5.4) was applied, also prepare that patch as a PR against the glm5 fork / upstream llama.cpp (separate from the HF release, but same session). Mark OpenSpec change complete.
 
 ---
 
