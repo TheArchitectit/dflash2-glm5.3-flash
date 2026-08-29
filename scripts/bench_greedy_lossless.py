@@ -45,7 +45,13 @@ def post(host, prompt, max_tokens=128):
         headers={"Content-Type": "application/json"},
     )
     with urllib.request.urlopen(req, timeout=900) as r:
-        return json.loads(r.read())
+        resp = json.loads(r.read())
+    msg = resp["choices"][0]["message"]
+    # reasoning-effort=max splits output into reasoning_content + content;
+    # losslessness is about the full generated stream, so compare both.
+    full = (msg.get("reasoning_content") or "") + (msg.get("content") or "")
+    return {"choices": [{"message": {"content": full}}],
+            "usage": resp.get("usage", {}), "timings": resp.get("timings", {})}
 
 
 def run_arm(host, n, tag):
