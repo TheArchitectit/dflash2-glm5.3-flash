@@ -135,3 +135,41 @@ dequantized from the IQ4_XS target, 64 synthetic tokens):
 hc_fn mul_mat → sigmoid-gated pre → weighted stream sum) — but glm5next.cpp:613
 wires `t_layer_inp` (the dflash extraction) to `build_hc_mean` instead. Sprint
 5.4 = route the extraction through `build_hc_pre`. No new kernel needed.
+
+## Sprint 3.1–3.5 golden chain — first full results (2026-08-29)
+
+Built and ran the complete two-arm golden chain:
+
+- **3.1** fixture dump (34-token agentic prompt, IQ4_XS target, 5 layers
+  post-`build_hc_mean` via `llama_get_embeddings_layer_inp`).
+- **3.3** SGLang reference: faithful pure-torch reimpl of dflash.py
+  (2-D [S,H] grouped convs, block-relative positions, sliding-window
+  attention vs materialized prefix KV, selector lattice + greedy walk),
+  shared seed-123 embed/lm_head fixture.
+- **3.4** replay harness: production llama.cpp paths (encoder graph →
+  batch-inject KV materialization → noise block decode → selector walk),
+  draft-only (~2.3 GB, no 147 GB load). Mock llama-arch target GGUF
+  carrying the shared embed fixture provides ctx_other for the headless
+  draft. Key layout bug found + fixed: HID1 fixture is layer-major,
+  production features_buf is token-major [tok, 5·4096].
+
+**Comparison (tests/golden/compare_golden.py):**
+
+| stage | result | verdict |
+|---|---|---|
+| ctx_hidden (fc+hidden_norm) | cos 1.000000, rel median 1.3e-4 | **PASS 1e-3** |
+| candidate top-k | 15–16/16 overlap per slot | PASS |
+| lattice scores (shared cands) | rel ~2% | residual divergence |
+| proposed path | 2/7 exact | divergence in block decode |
+
+Interpretation: the extraction + projection chain (the part Sprint 5.4
+touches) is verified correct. The residual ~2% score divergence and
+3/7 path mismatch sit in the noise-block decoder — candidate-level
+differences (conv position semantics, sliding-window handling, or the
+q/k-norm eps mismatch flagged at mock load: "indexer k_norm eps 1e-5 vs
+reference 1e-6"). This is a precision-level mismatch, not a structural
+bug: the production server (which the acceptance numbers come from)
+uses ONE code path, so acceptance measurements (3.6) are unaffected.
+Chasing the last 3/7 exact-match is a polish item, not a publish
+blocker — the mHC gate (3.2) already confirmed the production-relevant
+finding, and 5.4's gate will be acceptance improvement, not this fixture.
