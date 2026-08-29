@@ -19,7 +19,11 @@ Checkpoint tensor inventory (ground truth for 1.6): 5 layers × 15 per-layer ten
 
 ---
 
-## Sprint 1 — Conversion (Phase A, REQ-1)
+## Sprint 1 — Conversion (Phase A, REQ-1) — COMPLETE 2026-08-29
+
+All gates passed (81-tensor inventory, metadata parity vs reference, conv-base
+byte-identical, llama-cli load sanity, off-by-one layers correct). Arch alias
+already registered at qwen.py:642 — no patch needed.
 
 - [ ] **1.1 Stage GLM-5.3-Flash target HF files.** The draft checkpoint has no tokenizer; `DFlashModel.set_vocab` (qwen.py:647-673) delegates to the target arch's vocab handler and needs real files, not the GGUF shards. Run:
   `hf download zai-org/GLM-5.3-Flash config.json tokenizer.json tokenizer_config.json generation_config.json chat_template.jinja --local-dir /mnt/ollama/models/glm-5.3-flash/target-hf`
@@ -56,7 +60,12 @@ Checkpoint tensor inventory (ground truth for 1.6): 5 layers × 15 per-layer ten
 
 ---
 
-## Sprint 2 — Smoke Test (Phase B, REQ-2)
+## Sprint 2 — Smoke Test (Phase B, REQ-2) — COMPLETE 2026-08-29
+
+All gates passed: 3/3 prompts generated, draft_n > 0, zero real asserts
+(`set_abort_callback` hits are benign fitting-phase lines), load log showed
+`block_size=8, mask_token_id=154856, n_extract=5`, `n_max=7`. Measured:
+~1.5 t/s effective, acceptance 3.36/7. See research/07-gap-analysis.md.
 
 - [ ] **2.1 Solo-run preflight.** Write `scripts/solo_preflight.sh`: (a) verify :8086 not serving (`ss -ltn | grep :8086` empty, or `systemctl is-active llama-server-qwen-flash` ≠ active), (b) `free -g` shows ≥ 165 GB available (147 GB target + ~5 GB draft + headroom; box has 251 GB), (c) `ss -ltn | grep :8100` empty. Gate: all three pass. If production must be stopped: coordinate a window, `sudo systemctl stop llama-server-qwen-flash`, and restart it in 2.6. **STOP GATE**: never start the 147 GB load while :8086 is live.
 
@@ -114,7 +123,49 @@ Checkpoint tensor inventory (ground truth for 1.6): 5 layers × 15 per-layer ten
 
 ---
 
-## Dependency notes
+## Sprint 5 — Gap Closure (+60% throughput, from research/07-gap-analysis.md)
 
-- 1.2 → 1.7 (reference needed for diff). 1.5 → 1.6..1.11. Sprint 1 fully gates Sprint 2; 2.2/2.3 gate 2.4. 3.1 → 3.3/3.4 → 3.5 → 3.6 (3.2 parallel with 3.1). 3.6 + 3.7 gate Sprint 4. 4.2/4.3 share one solo window — run back-to-back to keep thermals comparable.
+Baseline for this sprint: Sprint 2 measured ~1.5 t/s (+14%), acceptance 3.36/7,
+verify cost 2.2 s vs 0.87 s expected. Root causes: RC-1 MoE verify-cost
+blowup, RC-2 mHC collapse mismatch + sampling mismatch. Target: ≥2.1 t/s.
+
+- [ ] **5.1 Overhead calibration (no acceptance noise).** Solo run with
+  `--spec-synth-rates 1,1,1,1,1,1,1` (forces full acceptance) and
+  `--spec-synth-rates 1,0,0,0,0,0,0` (forces acceptance 2/step) to measure pure
+  cycle cost at each draft length. Confirms the verify-cost model (RC-1) in one
+  session. Gate: measured cycle times recorded in `benchmarks/raw/`.
+
+- [ ] **5.2 Config sweep (fast levers).** Solo windows, one change at a time,
+  `scripts/smoke_gen.sh` + a 10-prompt mini-suite for each: (a) n_max 4,
+  (b) n_max 5, (c) p_min 0.4 @ n_max 7, (d) top-k 20 (all else current),
+  (e) `--threads 20`, (f) `--poll 100`. Record t/s + accepted/step for each.
+  Gate: best combo identified; expected ~+40% from (a)-(d). **STOP GATE** if any
+  variant is slower than the Sprint-2 config — keep the sweep honest.
+
+- [ ] **5.3 mHC extraction probe (the big fix, risk 4).** Build the Sprint 3.2
+  golden test FIRST (3.1-3.5): dump SGLang reference hiddens for a canned
+  prompt, replay through llama.cpp extraction, compare. Expected: mismatch —
+  glm5next uses unweighted mean (models.h:1350 "collapsed by unweighted mean,
+  not a gated head") vs SGLang's learned gated contraction (mhc.py:1626
+  `(pre · residual).sum(1)`). Gate: quantified divergence recorded.
+
+- [ ] **5.4 mHC fix.** If 5.3 confirms mismatch: add the gated contraction to
+  the extraction path (compute `pre`/`post` mix from the model's hc_attn_fn/
+  scale/base at the extraction layers, replace build_hc_mean for the dflash
+  t_layer_inp path only — do NOT change normal generation). Rebuild, re-run
+  golden test, then acceptance suite. Expected: acceptance 3.36 → 4.5+, t/s
+  2.4–2.8. **STOP GATE**: golden test must pass at 1e-3 before any
+  acceptance claims. Regression gate: run `.devgate/scripts/regression_check.py`
+  after the C++ patch.
+
+- [ ] **5.5 Re-validate losslessness.** After config + mHC changes: re-run the
+  greedy spec-on == spec-off check (3.7). Gate: 10/10 identical outputs.
+
+- [ ] **5.6 Sprint 4 benchmark with final config.** Re-run 4.2/4.3 arms with
+  the winning configuration; update `benchmarks/results-dflash2-glm.md`.
+  Gate: ≥ +60% over 1.32 baseline (≥2.1 t/s) or documented explanation.
+
+
+
+- 1.2 → 1.7 (reference needed for diff). 1.5 → 1.6..1.11. Sprint 1 fully gates Sprint 2; 2.2/2.3 gate 2.4. 3.1 → 3.3/3.4 → 3.5 → 3.6 (3.2 parallel with 3.1). 3.6 + 3.7 gate Sprint 4. 4.2/4.3 share one solo window — run back-to-back to keep thermals comparable. Sprint 5: 5.1 → 5.2 → (5.3 → 5.4 → 5.5) → 5.6; golden test (5.3) is required before the mHC patch (5.4) can be claimed fixed.
 - Every server task (2.x, 3.6, 3.7, 4.2, 4.3) inherits the solo-run rule: :8086 idle, preflight run, restore after. Long runs go through systemd units or `nohup … &` with log files — never a blocking foreground terminal on ucs03.

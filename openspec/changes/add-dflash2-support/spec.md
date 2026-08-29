@@ -107,10 +107,21 @@ Run the glm5 fork's converter on `incoai/GLM-5.3-Flash-DFlash2`:
 | 4 | mHC collapse (`build_hc_mean`) doesn't match SGLang's extraction for GLM | Golden test REQ-3; if mismatch, hook SGLang's exact reduction |
 | 5 | block_size default 16 overrides trained 8 | Assert metadata present in converter output |
 | 6 | License: CC BY-NC-ND 4.0 weights | Non-commercial HF upload with attribution; converter is ours (MIT) |
+| 7 | mHC collapse mismatch CONFIRMED: llama.cpp `build_hc_mean` = unweighted mean (models.h:1350) vs SGLang's learned gated contraction (mhc.py:1626) — acceptance degraded | Sprint 5.3 golden test quantifies; 5.4 patches the dflash extraction path with the gated contraction; 1e-3 gate before claiming fixed |
+| 8 | MoE verify-cost blowup: 8-token verify batch reads ~2.7× a single token's weights (expert-routing spread) | n_max reduction + p_min gating (Sprint 5.2); config-only path to ~+59% |
 
 ## Phases
 
-- **Phase A (now)**: REQ-1 — convert, diff vs reference GGUF
-- **Phase B**: REQ-2 — smoke test spec decode
-- **Phase C**: REQ-3 — golden + acceptance validation
-- **Phase D**: REQ-4 — benchmark, publish
+- **Phase A (DONE 2026-08-29)**: REQ-1 — convert, diff vs reference GGUF. All
+  parity gates passed; arch alias already registered (qwen.py:642).
+- **Phase B (DONE 2026-08-29)**: REQ-2 — smoke test passed (draft_n>0, no
+  asserts). Measured: 1.5 t/s (+14%), acceptance 3.36/7 — below the 5.78
+  projection. Gap analysis in research/07-gap-analysis.md.
+- **Phase C**: REQ-3 — golden + acceptance validation. Now doubles as the
+  verification gate for the mHC-collapse fix (Sprint 5.3–5.4): llama.cpp's
+  `build_hc_mean` is an unweighted mean (models.h:1350) while SGLang trained
+  the draft on gated contractions (mhc.py:1626) — confirmed divergence to fix.
+- **Phase D**: REQ-4 — benchmark, publish.
+- **Phase E (Sprint 5)**: gap closure to +60% (≥2.1 t/s): synth-rate
+  calibration, config sweep (n_max, p_min, top-k, threads), mHC extraction fix,
+  lossless re-validation, final benchmark.
