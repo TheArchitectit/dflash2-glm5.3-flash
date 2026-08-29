@@ -173,3 +173,28 @@ uses ONE code path, so acceptance measurements (3.6) are unaffected.
 Chasing the last 3/7 exact-match is a polish item, not a publish
 blocker — the mHC gate (3.2) already confirmed the production-relevant
 finding, and 5.4's gate will be acceptance improvement, not this fixture.
+
+## Sprint 5.4 result — mHC "fix" REVERTED (2026-08-29, measured)
+
+**risk 7 was a false alarm.** The Sprint-3.2 micro-test compared
+`build_hc_mean` against the WRONG SGLang function. The real DFLASH
+capture path is `Glm5NextModel._prepare_aux_hidden_state`
+(glm5_next.py:1078):
+
+    aux = hidden_states + residual
+    if dflash_capture and mhc: aux = hc_contract(aux, hc_mult)
+
+and `hc_contract` (mhc.py:1571) is an **unweighted mean**
+(`.unflatten(-1,(n,-1)).mean(dim=-2)`). The gated contraction
+(`_mhc_pre_torch`, mhc.py:1626) feeds NORMAL generation INSIDE each
+layer, not the capture. llama.cpp's `build_hc_mean` was correct all
+along.
+
+Measured: commit de9669d (gated-contraction extraction) → acceptance
+3.16 (no gain over 3.36); reverted (77445b3) → original restored.
+
+**The actual lever is sampling width.** A/B (same 4 prompts, n_predict
+32, controlled): top-k 40 → acc_len 1.94, 0.83 t/s; top-k 20 →
+acc_len 2.65 (**+36%**), 1.25 t/s (**+51%**). gap-analysis F4
+confirmed. Sprint 5.2 config sweep is now the primary lever; the
+"Sprint 5.4 mHC fix" is closed as no-op.
