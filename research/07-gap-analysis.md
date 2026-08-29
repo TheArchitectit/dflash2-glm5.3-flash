@@ -97,3 +97,24 @@ acceptance toward the published 4.4–5.5 and t/s toward 2.8–3.2 (2.1–2.4×)
   (295 lines; glm5 fork is newer — has p_min gating at 1281-1299, is_dflash2,
   is_mrope handling, metadata-driven causal_attn)
 - Measured data: journalctl ucs03, Sprint 2 smoke run (2026-08-29)
+
+## Sprint 5.1 result — synth-rate calibration (2026-08-29, measured)
+
+Forced 100% acceptance (rates 1,1,1,1,1,1,1): 3.82 t/s, cycle = 2.09 s,
+draft = 115 ms/block (128 blocks, 14.66 s). Draft stats confirm 7.97 mean
+accepted, per-position 1.000 except pos-7 at 0.969.
+
+**Findings (this changes the plan):**
+1. **Cycle cost is nearly flat in accepted count** (2.09 s @ 8/8 vs 2.24 s @
+   ~4.4 real): the verify batch always decodes n_max+1 tokens, so lowering
+   acceptance doesn't lower cost — and lowering n_max saves only ~0.15 s per 4
+   tokens dropped while capping the ceiling.
+2. **8-token verify batch = ~2.75× single-token cost** (2.09 s vs 0.758 s) —
+   the MoE/KDA batch overhead, as predicted (RC-1).
+3. **Acceptance is the lever, not n_max.** With the mHC fix moving acceptance
+   to ~5.5: projected 2.4 t/s (+83%). n_max sweep (if fixed): 7→2.41, 5→2.21,
+   4→1.99, 3→1.71 t/s — **keep n_max=7**; the tail positions pay for themselves.
+
+**Revised priority: skip the n_max sweep as a primary lever; go straight to the
+golden test (Sprint 3) → mHC fix (5.4). Config tuning (top-k 20, threads)
+remains a cheap secondary.**
