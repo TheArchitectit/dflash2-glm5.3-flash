@@ -10,7 +10,7 @@
 // extraction path (llama_get_embeddings_layer_inp, post build_hc_mean) the
 // draft sees in production.
 //
-// usage: dump_target_hiddens -m <target.gguf> -o <out.bin> [--prompt-file f]
+// usage: dump_target_hiddens -m <target.gguf> --gold-out <out.bin> [--prompt-file f]
 //
 // NOTE: 147 GB model load — run solo per the 2.1 discipline (no :8086/:8100).
 
@@ -39,20 +39,19 @@ int main(int argc, char ** argv) {
         return 1;
     }
 
+    // the common parser rejects unknown args; take the output path + optional
+    // prompt file from the environment instead.
     std::string out_path = "hiddens.bin";
     std::string prompt = DEFAULT_PROMPT;
-    for (int i = 1; i < argc; ++i) {
-        std::string a = argv[i];
-        if (a == "-o" && i + 1 < argc) { out_path = argv[++i]; }
-        if (a == "--prompt-file" && i + 1 < argc) {
-            FILE * f = fopen(argv[++i], "r");
-            if (!f) { fprintf(stderr, "cannot open prompt file\n"); return 1; }
-            prompt.clear();
-            char buf[4096];
-            size_t n;
-            while ((n = fread(buf, 1, sizeof(buf), f)) > 0) prompt.append(buf, n);
-            fclose(f);
-        }
+    if (const char * env = getenv("GOLD_OUT")) { out_path = env; }
+    if (const char * env = getenv("GOLD_PROMPT_FILE")) {
+        FILE * f = fopen(env, "r");
+        if (!f) { fprintf(stderr, "cannot open GOLD_PROMPT_FILE\n"); return 1; }
+        prompt.clear();
+        char buf[4096];
+        size_t n;
+        while ((n = fread(buf, 1, sizeof(buf), f)) > 0) prompt.append(buf, n);
+        fclose(f);
     }
 
     params.n_ctx = 512;
