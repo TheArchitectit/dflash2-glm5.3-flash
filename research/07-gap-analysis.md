@@ -118,3 +118,20 @@ accepted, per-position 1.000 except pos-7 at 0.969.
 **Revised priority: skip the n_max sweep as a primary lever; go straight to the
 golden test (Sprint 3) → mHC fix (5.4). Config tuning (top-k 20, threads)
 remains a cheap secondary.**
+
+## Sprint 3.2 result — mHC micro-test (2026-08-29, measured)
+
+`tests/golden/test_hc_collapse.py` (real learned weights blk.5.hc_attn_*
+dequantized from the IQ4_XS target, 64 synthetic tokens):
+
+- SGLang gated contraction pre-gates: **(3.3e-4, 2.2e-3, 3.64e-1, 2.0e-3)** —
+  one dominant stream (idx 2), three suppressed
+- llama.cpp `build_hc_mean` implied gates: (0.25, 0.25, 0.25, 0.25)
+- **median rel-err 1.24, mean cosine 0.51** — the representations are
+  different vectors, not a precision drift. This fully explains RC-2.
+
+**Fix path confirmed**: llama.cpp already implements the gated contraction —
+`build_hc_pre` (deepseek4.cpp:351-412, used for normal generation: rmsnorm →
+hc_fn mul_mat → sigmoid-gated pre → weighted stream sum) — but glm5next.cpp:613
+wires `t_layer_inp` (the dflash extraction) to `build_hc_mean` instead. Sprint
+5.4 = route the extraction through `build_hc_pre`. No new kernel needed.
