@@ -108,3 +108,15 @@ prompt-class artifact; it tracks the target's quantization/precision
 flatten the draft-vs-target agreement, and the acceptance metric measures
 exactly that agreement. Publish story: tiered numbers per workload class,
 with the external GPU reference cited for lineage parity.
+
+## Task #31 — draft-mtp A/B: NOT POSSIBLE (2026-08-29, measured)
+
+The target ships nextn weights (`glm5next.nextn_predict_layers=[1]`) and the
+fork's speculative impl accepts `--spec-type draft-mtp`, but glm5next.cpp:690
+hard-asserts: `"glm5next NextN graph not implemented yet"` — crash-loop on
+start (7 core-dumps before teardown; production restored, solo rule held).
+MTP graphs exist for step35/qwen35/deepseek32/deepseek2/glm-dsa targets, not
+this arch. Implementing the glm5next NextN graph (enorm/hnorm/eh_proj + KDA
+state for the nextn block) is a substantial fork-side feature — deferred, out
+of v0.0.1 scope. **DFlash2 remains the only working drafter for this target on
+this box.**
