@@ -198,3 +198,50 @@ Measured: commit de9669d (gated-contraction extraction) → acceptance
 acc_len 2.65 (**+36%**), 1.25 t/s (**+51%**). gap-analysis F4
 confirmed. Sprint 5.2 config sweep is now the primary lever; the
 "Sprint 5.4 mHC fix" is closed as no-op.
+
+## Sprint 5.2 result — final config locked (2026-08-29, measured)
+
+Clean 8-prompt A/B, identical prompt suite, n_predict fixed:
+
+| config | mean acc_len | mean t/s |
+|---|---|---|
+| n_max 7 + top-k 20 (baseline) | 2.38 | 1.09 |
+| **n_max 4 + p_min 0.4 + top-k 20** | **3.91** | **1.44** |
+
+**+32% t/s and +64% acceptance on identical inputs.** This reverses the
+Sprint-5.1 synth-rate conclusion ("keep n_max=7"): under *real* sampling
+the tail positions don't pay for themselves — trimming the verify batch to
+5 tokens (n_max 4) + trust-gating the selector walk (p_min 0.4) beats the
+8-token batch. F1 + F2 confirmed together; F4 (top-k) applied.
+
+Final production config (systemd/llama-server-glm5-dflash2.service):
+`--spec-draft-n-max 4 --spec-draft-p-min 0.4 --top-k 20`.
+Sprint 5.2 complete. Remaining gap to the +60% target (1.32 → 2.1 t/s)
+is bounded by acceptance (~3.9 real vs 5.0 published-on-a-different-target),
+not by config — see the REQ-3 gate decision below.
+
+## REQ-SD-3 gate status — open decision (2026-08-29)
+
+Sprint 3.6's acceptance gate is **mean ≥ 5.0** (spec REQ-SD-3; published
+metric counts the verifier bonus token). Measured reality on GLM-5.3-Flash:
+
+| config | mean acceptance length |
+|---|---|
+| n_max 7, top-k 40 | 1.94 – 2.38 |
+| n_max 7, top-k 20 | 2.38 – 2.65 |
+| n_max 4 + p_min 0.4, top-k 20 | 3.91 |
+
+The ≥5.0 figure was published for a **different target** (Qwen3.8-27B,
+`incoai/Qwen3.8-27B-DFlash2-GGUF`). No measured config on GLM-5.3-Flash
+reaches 5.0; the honest range is ~2.2–3.9. Options:
+
+- **(a) Lower the gate and publish with truthful numbers.** The definition
+  of done already allows "publishable with honest numbers"; the golden
+  chain (3.1–3.5) proves the draft is *correct*, just less accepted on this
+  target's distribution (top-k 20 + MoE verify cost).
+- **(b) Keep chasing acceptance** via the residual golden divergence
+  (~2% lattice scores, 4/7 exact path; q/k-norm eps 1e-5 vs 1e-6) before
+  the Sprint 4 benchmark/publish chain. Small expected gain, real polish.
+
+Pending the user's call, Sprint 3.6 is **not run to completion** and the
+publish blockers (Sprint 4) are not started.
