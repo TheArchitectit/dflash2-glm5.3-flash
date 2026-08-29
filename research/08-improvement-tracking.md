@@ -33,3 +33,16 @@ derived from the ladder in `benchmarks/acceptance-gate.md` — never hand-edited
 - Next lever, if Tier T4/T5 is wanted: the residual golden divergence
   (~2% lattice scores, 4/7 exact path; q/k-norm eps 1e-5 vs 1e-6) and/or the
   RC-1 MoE verify-cost kernel work (F3, parked).
+
+## Sprint 3.6 — full 50-prompt acceptance gate (2026-08-29, measured)
+
+Config: n_max 4 + p_min 0.4 + top-k 20 (locked). Raw log:
+`benchmarks/raw/acceptance_3.6_50prompt.log`.
+
+| Date | Config | prompts | acc_len | t/s | Tier(t/s) | Tier(acc) |
+|---|---|---|---|---|---|---|
+| 2026-08-29 | n_max 4 + p_min 0.4 + top-k 20 | 50 | 3.750 | **1.864** | **T3 TARGET (+41% vs 1.32)** | **T3 TARGET** |
+
+Old hard gate (≥5.0) reads FAIL, but per benchmarks/acceptance-gate.md the
+binding constraints are: correctness golden (PASSED, 1e-3), lossless check
+(pending 3.7), and T0 net-loss (cleanly cleared — 1.864 >> 1.32 baseline).

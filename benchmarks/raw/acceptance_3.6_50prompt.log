@@ -1,0 +1,18 @@
+[1/50] draft_n=63 accepted=47 acc_len=6.22 tps=2.94
+[2/50] draft_n=79 accepted=39 acc_len=4.46 tps=2.22
+[3/50] draft_n=95 accepted=29 acc_len=3.14 tps=1.70
+[4/50] draft_n=84 accepted=37 acc_len=4.08 tps=1.78
+[5/50] draft_n=87 accepted=34 acc_len=3.74 tps=1.75
+[6/50] draft_n=91 accepted=31 acc_len=3.38 tps=1.70
+[7/50] draft_n=69 accepted=34 acc_len=4.45 tps=1.97
+[8/50] draft_n=65 accepted=45 acc_len=5.85 tps=0.82
+[10/50] draft_n=85 accepted=33 acc_len=3.72 tps=1.59
+[20/50] draft_n=71 accepted=40 acc_len=4.94 tps=2.30
+[30/50] draft_n=78 accepted=34 acc_len=4.05 tps=1.98
+[40/50] draft_n=92 accepted=30 acc_len=3.28 tps=1.68
+[50/50] draft_n=71 accepted=31 acc_len=4.06 tps=1.60
+
+=== acceptance-length over 50 prompts ===
+mean acceptance length : 3.750
+mean t/s               : 1.864
+GATE >= 5.0            : FAIL
