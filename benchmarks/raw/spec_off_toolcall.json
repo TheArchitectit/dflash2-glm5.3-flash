@@ -1,0 +1,112 @@
+[
+  {
+    "id": "toolcall-00",
+    "wall_s": 64.82,
+    "tokens": 40,
+    "tps": 0.617,
+    "draft_n": null,
+    "draft_n_accepted": null,
+    "acc_len": null,
+    "out_len": 81,
+    "out": "The user wants the weather in Reykjavik in metric units. Simple single tool call."
+  },
+  {
+    "id": "toolcall-01",
+    "wall_s": 42.13,
+    "tokens": 66,
+    "tps": 1.567,
+    "draft_n": null,
+    "draft_n_accepted": null,
+    "acc_len": null,
+    "out_len": 107,
+    "out": "The user wants to find flights from SFO to NRT on 2026-09-14. I have a search_flights tool. Let me call it."
+  },
+  {
+    "id": "toolcall-02",
+    "wall_s": 27.67,
+    "tokens": 43,
+    "tps": 1.554,
+    "draft_n": null,
+    "draft_n_accepted": null,
+    "acc_len": null,
+    "out_len": 127,
+    "out": "The user wants to know the current temperature in Phoenix in Fahrenheit. I'll use the get_weather function with imperial units."
+  },
+  {
+    "id": "toolcall-03",
+    "wall_s": 150.61,
+    "tokens": 256,
+    "tps": 1.7,
+    "draft_n": null,
+    "draft_n_accepted": null,
+    "acc_len": null,
+    "out_len": 1146,
+    "out": "The user wants a count of active users from the users table. I'll run a SQL query against the analytics DB. I need to guess the schema - likely there's an \"active\" column or \"status\" column. Let me write a reasonable query. I could first check the schema, but let me just try a common pattern: SELECT COUNT(*) FROM users WHERE is_active = TRUE or status = 'active'.\n\nI don't know the exact column names. Maybe I should inspect the table first? The run_query tool is read-only SELECT. I could do something like SELECT * FROM users LIMIT 1 to see columns, but that's two calls dependent on each other. Alternatively, I can try a query with both possibilities or just query information_schema first.\n\nLet me check the schema first to be safe: SELECT column_name FROM information_schema.columns WHERE table_name = 'users'. Then run the count query based on results. That's a dependent chain, so I must wait for the first result.\n\nActually, I could try one call with a reasonable guess... but if it fails, I'd need another round anyway. Better to inspect schema first.I'll first check the users table schema to find the right column for active status."
+  },
+  {
+    "id": "toolcall-04",
+    "wall_s": 22.7,
+    "tokens": 35,
+    "tps": 1.542,
+    "draft_n": null,
+    "draft_n_accepted": null,
+    "acc_len": null,
+    "out_len": 71,
+    "out": "The user wants weather for Cape Town in metric units. Simple tool call."
+  },
+  {
+    "id": "toolcall-05",
+    "wall_s": 35.79,
+    "tokens": 57,
+    "tps": 1.593,
+    "draft_n": null,
+    "draft_n_accepted": null,
+    "acc_len": null,
+    "out_len": 87,
+    "out": "The user wants flights from BER to JFK on 2026-08-30. I'll use the search_flights tool."
+  },
+  {
+    "id": "toolcall-06",
+    "wall_s": 145.11,
+    "tokens": 245,
+    "tps": 1.688,
+    "draft_n": null,
+    "draft_n_accepted": null,
+    "acc_len": null,
+    "out_len": 786,
+    "out": "The user wants to run a SQL query to get total revenue from orders for last month. I need to use the run_query tool. Let me think about what \"last month\" means \u2014 I don't know the current date, but I can write SQL that computes it relative to the current date using SQL functions.\n\nLet me write a query like:\n\n```sql\nSELECT SUM(total_amount) AS total_revenue\nFROM orders\nWHERE order_date >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')\n  AND order_date < DATE_TRUNC('month', CURRENT_DATE);\n```\n\nOr use EXTRACT(year/month). Since I don't know the exact schema, I'll make a reasonable assumption: table `orders` with columns like `total_amount` or `revenue` and `order_date` or `created_at`. Let me go with a common pattern.\n\nThe user said \"run it\" \u2014 so just run it. Single call."
+  },
+  {
+    "id": "toolcall-07",
+    "wall_s": 36.13,
+    "tokens": 58,
+    "tps": 1.605,
+    "draft_n": null,
+    "draft_n_accepted": null,
+    "acc_len": null,
+    "out_len": 187,
+    "out": "The user wants weather in Buenos Aires and advice on whether they need a jacket. I'll call get_weather for Buenos Aires. Units \u2014 Buenos Aires uses metric typically, so metric makes sense."
+  },
+  {
+    "id": "toolcall-08",
+    "wall_s": 72.55,
+    "tokens": 118,
+    "tps": 1.626,
+    "draft_n": null,
+    "draft_n_accepted": null,
+    "acc_len": null,
+    "out_len": 323,
+    "out": "The user asks two things: which airport code is for London Heathrow, and search flights LHR to LAX on 2026-10-01.\n\nThe airport code question I can answer from knowledge: LHR. Then search flights LHR to LAX 2026-10-01 using the search_flights tool.London Heathrow's airport code is **LHR**.\n\nLet me search for those flights:"
+  },
+  {
+    "id": "toolcall-09",
+    "wall_s": 137.32,
+    "tokens": 231,
+    "tps": 1.682,
+    "draft_n": null,
+    "draft_n_accepted": null,
+    "acc_len": null,
+    "out_len": 904,
+    "out": "The user wants to run a query for the top 10 products by units sold. I have a run_query tool that runs read-only SQL SELECT against an analytics DB.\n\nI don't know the exact schema, but I can make a reasonable guess. Common tables might be \"products\" and \"orders\" or \"sales\". Let me try a query. Since I don't know the schema, maybe I should first inspect the schema? The tool only says read-only SQL SELECT. I could try querying something like sqlite_master or information_schema to discover tables. That's a reasonable approach: first discover schema, then write the query.\n\nLet me first run a query to list tables. I'll try information_schema.tables (works for many SQL DBs) \u2014 but if it's SQLite, sqlite_master would be needed. Let me try one and adapt based on results. Since dependent calls must wait, I'll do one call first.I'll start by checking what tables are available in the analytics database."
+  }
+]

@@ -1,0 +1,112 @@
+[
+  {
+    "id": "summarize-00",
+    "wall_s": 216.2,
+    "tokens": 128,
+    "tps": 0.592,
+    "draft_n": null,
+    "draft_n_accepted": null,
+    "acc_len": null,
+    "out_len": 527,
+    "out": "The user wants a summary of the quarterly report in exactly 4 bullet points, no preamble. The text is repeated 4 times (same content). I need to deduplicate and summarize the key points.\n\nKey themes:\n1. Regional performance: APAC led at 23% QoQ, EMEA 11%, Americas 8%; currency headwinds in EMEA; throughput improved across all regions; opex up modestly due to infra scaling.\n2. Product line: platform tier drove 61% of new ARR; legacy on-prem renewals declined 14% due to migration incentives; add-on modules highest expansion"
+  },
+  {
+    "id": "summarize-01",
+    "wall_s": 112.22,
+    "tokens": 128,
+    "tps": 1.141,
+    "draft_n": null,
+    "draft_n_accepted": null,
+    "acc_len": null,
+    "out_len": 534,
+    "out": "The user wants a summary of the quarterly report in exactly 4 bullet points, no preamble. The text is repeated 5 times but the content is identical. Let me extract the key themes:\n\n1. Performance/regions: throughput improved across all regions, unit economics steady, opex up modestly from infrastructure scaling; APAC led at 23% QoQ, EMEA 11%, Americas 8%; currency headwinds in EMEA; LatAm small but fast-growing.\n\n2. Product line: platform tier drove 61% of new ARR; legacy on-prem renewals declined 14% due to migration incentives"
+  },
+  {
+    "id": "summarize-02",
+    "wall_s": 112.8,
+    "tokens": 128,
+    "tps": 1.135,
+    "draft_n": null,
+    "draft_n_accepted": null,
+    "acc_len": null,
+    "out_len": 514,
+    "out": "The user wants a summary of the quarterly report in exactly 4 bullet points, no preamble. The text is repeated multiple times but contains identical content. Let me extract key themes:\n\n1. Regional growth: APAC led at 23% QoQ, EMEA 11%, Americas 8%; currency headwinds in EMEA; LatAm small but fast-growing\n2. Product: Platform tier drove 61% of new ARR; legacy on-prem renewals declined 14%; add-on modules highest expansion revenue per account\n3. Infrastructure: compute spend +19% vs 31% token growth (improving"
+  },
+  {
+    "id": "summarize-03",
+    "wall_s": 114.68,
+    "tokens": 128,
+    "tps": 1.116,
+    "draft_n": null,
+    "draft_n_accepted": null,
+    "acc_len": null,
+    "out_len": 531,
+    "out": "The user wants a summary of the quarterly report in exactly 4 bullet points, no preamble. The report text is repeated multiple times but it's the same content. I need to condense the key points into 4 bullets.\n\nKey themes:\n1. Regional performance: throughput improved across all regions, APAC led at 23% QoQ, EMEA 11% (with currency headwinds), Americas 8%, LatAm small but fast-growing. Opex increased modestly due to infrastructure scaling.\n2. Product line: platform tier drove 61% of new ARR, legacy on-prem renewals declined 14"
+  },
+  {
+    "id": "summarize-04",
+    "wall_s": 213.2,
+    "tokens": 128,
+    "tps": 0.6,
+    "draft_n": null,
+    "draft_n_accepted": null,
+    "acc_len": null,
+    "out_len": 527,
+    "out": "The user wants a summary of the quarterly report in exactly 4 bullet points, no preamble. The text is repeated 4 times (same content). I need to deduplicate and summarize the key points.\n\nKey themes:\n1. Regional performance: APAC led at 23% QoQ, EMEA 11%, Americas 8%; currency headwinds in EMEA; throughput improved across all regions; opex up modestly due to infra scaling.\n2. Product line: platform tier drove 61% of new ARR; legacy on-prem renewals declined 14% due to migration incentives; add-on modules highest expansion"
+  },
+  {
+    "id": "summarize-05",
+    "wall_s": 125.28,
+    "tokens": 128,
+    "tps": 1.022,
+    "draft_n": null,
+    "draft_n_accepted": null,
+    "acc_len": null,
+    "out_len": 534,
+    "out": "The user wants a summary of the quarterly report in exactly 4 bullet points, no preamble. The text is repeated 5 times but the content is identical. Let me extract the key themes:\n\n1. Performance/regions: throughput improved across all regions, unit economics steady, opex up modestly from infrastructure scaling; APAC led at 23% QoQ, EMEA 11%, Americas 8%; currency headwinds in EMEA; LatAm small but fast-growing.\n\n2. Product line: platform tier drove 61% of new ARR; legacy on-prem renewals declined 14% due to migration incentives"
+  },
+  {
+    "id": "summarize-06",
+    "wall_s": 115.7,
+    "tokens": 128,
+    "tps": 1.106,
+    "draft_n": null,
+    "draft_n_accepted": null,
+    "acc_len": null,
+    "out_len": 514,
+    "out": "The user wants a summary of the quarterly report in exactly 4 bullet points, no preamble. The text is repeated multiple times but contains identical content. Let me extract key themes:\n\n1. Regional growth: APAC led at 23% QoQ, EMEA 11%, Americas 8%; currency headwinds in EMEA; LatAm small but fast-growing\n2. Product: Platform tier drove 61% of new ARR; legacy on-prem renewals declined 14%; add-on modules highest expansion revenue per account\n3. Infrastructure: compute spend +19% vs 31% token growth (improving"
+  },
+  {
+    "id": "summarize-07",
+    "wall_s": 114.69,
+    "tokens": 128,
+    "tps": 1.116,
+    "draft_n": null,
+    "draft_n_accepted": null,
+    "acc_len": null,
+    "out_len": 531,
+    "out": "The user wants a summary of the quarterly report in exactly 4 bullet points, no preamble. The report text is repeated multiple times but it's the same content. I need to condense the key points into 4 bullets.\n\nKey themes:\n1. Regional performance: throughput improved across all regions, APAC led at 23% QoQ, EMEA 11% (with currency headwinds), Americas 8%, LatAm small but fast-growing. Opex increased modestly due to infrastructure scaling.\n2. Product line: platform tier drove 61% of new ARR, legacy on-prem renewals declined 14"
+  },
+  {
+    "id": "summarize-08",
+    "wall_s": 213.68,
+    "tokens": 128,
+    "tps": 0.599,
+    "draft_n": null,
+    "draft_n_accepted": null,
+    "acc_len": null,
+    "out_len": 527,
+    "out": "The user wants a summary of the quarterly report in exactly 4 bullet points, no preamble. The text is repeated 4 times (same content). I need to deduplicate and summarize the key points.\n\nKey themes:\n1. Regional performance: APAC led at 23% QoQ, EMEA 11%, Americas 8%; currency headwinds in EMEA; throughput improved across all regions; opex up modestly due to infra scaling.\n2. Product line: platform tier drove 61% of new ARR; legacy on-prem renewals declined 14% due to migration incentives; add-on modules highest expansion"
+  },
+  {
+    "id": "summarize-09",
+    "wall_s": 112.9,
+    "tokens": 128,
+    "tps": 1.134,
+    "draft_n": null,
+    "draft_n_accepted": null,
+    "acc_len": null,
+    "out_len": 534,
+    "out": "The user wants a summary of the quarterly report in exactly 4 bullet points, no preamble. The text is repeated 5 times but the content is identical. Let me extract the key themes:\n\n1. Performance/regions: throughput improved across all regions, unit economics steady, opex up modestly from infrastructure scaling; APAC led at 23% QoQ, EMEA 11%, Americas 8%; currency headwinds in EMEA; LatAm small but fast-growing.\n\n2. Product line: platform tier drove 61% of new ARR; legacy on-prem renewals declined 14% due to migration incentives"
+  }
+]

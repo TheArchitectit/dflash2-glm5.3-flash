@@ -1,60 +1,112 @@
 # dflash2-llamacpp
 
-Port of [incoai's DFlash2](https://huggingface.co/incoai/GLM-5.3-Flash-DFlash2) block-diffusion draft model to [llama.cpp](https://github.com/ggml-org/llama.cpp), enabling speculative decoding for GLM-5.3-Flash on CPU-only hosts.
+Working notes, benchmark harnesses, gate scripts, and a CPU-correctness test
+chain for running [incoai's DFlash2](https://huggingface.co/incoai/GLM-5.3-Flash-DFlash2)
+block-diffusion speculative decoding for **GLM-5.3-Flash on CPU-only hosts**
+via [llama.cpp](https://github.com/ggml-org/llama.cpp)
+(`--spec-type draft-dflash`, already upstream in the fork we build).
 
-## Why
+**Status: v0.0.1 in progress** — conversion, golden correctness, and CPU
+benchmarks are measured; HF weight publication pending
+(`user001/GLM-5.3-Flash-DFlash2-GGUF`, draft GGUF only — the 147 GB target is
+not distributed here).
 
-DFlash2 is currently SGLang-only (GPU). But block-diffusion speculative decoding is uniquely suited to **bandwidth-bound CPU inference**: verifying `n` draft tokens costs one forward pass through the target model — the same weight read as generating 1 token. With DFlash2's reported 5.78 accepted tokens per verification step, a GLM-5.3-Flash CPU deployment goes from 1.32 t/s to a projected ~7 t/s.
+## What works today (measured, not projected)
 
-No GGUF conversion of DFlash2 exists. This repo provides:
+| Result | Value | Evidence |
+|---|---|---|
+| Baseline decode (no spec) | 1.32 t/s | `research/07-gap-analysis.md` |
+| Spec effective, 50-prompt agentic | **1.864 t/s (+41%)** | `benchmarks/raw/acceptance_3.6_50prompt.log` |
+| Spec effective, GSM8K mirror | **2.161 t/s (+64%)** | `benchmarks/raw/gsm8k_mirror.json` |
+| Acceptance (mixed agentic / math / toolcall) | 2.76 / 2.69 / 3.61 tok/step | server-side journal + benches |
+| Draft correctness vs SGLang reference | **PASS @ 1e-3** (cos 1.0) | golden chain, `tests/golden/` |
+| Losslessness | distribution-level; each arm 100% self-deterministic | REQ-SD-4 + `research/08` |
 
-1. **`convert_dflash2_to_gguf.py`** — safetensors → GGUF converter
-2. **Patches against llama.cpp** — new `dflash2` model class + spec-decode wiring
-3. **Benchmarks** — acceptance rates and effective t/s vs baseline decode
+Honest caveats: the published 5.428–5.78 acceptance figures belong to other
+targets/GPU paths — on this GLM target at IQ4_XS, acceptance is ~2.7 with
+strong per-workload variation. Config `n_max 4 + p_min 0.4 + top-k 20` beat
+full 7-token blocks on CPU because MoE verify cost scales with batch width
+(`research/07` RC-1). Tier scheme + decision record: `benchmarks/acceptance-gate.md`.
 
-## Status
+## Why CPU
 
-- [ ] Phase 0: repo, spec, reference-tensor extraction (this document)
-- [ ] Phase 1: GGUF converter + loader parity test
-- [ ] Phase 2: single-forward inference test (prefill-only, no spec decode)
-- [ ] Phase 3: speculative decode integration
-- [ ] Phase 4: CPU benchmarks vs baseline
+DFlash2 was SGLang/GPU-only; llama.cpp's dflash path runs the block-diffusion
+drafter (1B, 5 GQA layers, headless — borrows the target's embeddings and
+lm_head via `ctx_other`) entirely on CPU, where verifying a block costs one
+target forward pass — the same weight read as generating 1 token.
+
+## Repo map
+
+| Path | What |
+|---|---|
+| `openspec/changes/add-dflash2-support/` | OpenSpec change: proposal, design, tasks, release plan, spec deltas |
+| `research/01..08` | deep dives: model, worker, SGLang framework, target hooks, converter, ecosystem, gap analysis, improvement tracking |
+| `scripts/` | conversion gate checks (`check_tensor_inventory`, `diff_gguf_meta`, `check_conv_base`) + benches (`bench_acceptance`, `bench_agentic`, `bench_gsm8k_mirror`, `bench_greedy_lossless`, `ab_8prompt`) + suite generators |
+| `tests/golden/` | two-arm golden chain: pure-torch SGLang reimpl vs llama.cpp replay harness (fixtures gitignored; regenerable, fixed seeds) |
+| `systemd/` | production unit (dflash2), spec-off baseline unit, defunct mtp probe (arch lacks the NextN graph — finding in `research/08`) |
+| `benchmarks/` | tier ladder, raw JSON/log dumps, results write-up |
+
+## Serving recipe (verified on the box this was measured on)
+
+```bash
+llama-server \
+  -m GLM-5.3-Flash-UD-IQ4_XS-00001-of-00005.gguf \
+  -md dflash2-glm-f16.gguf \
+  --spec-type draft-dflash --spec-draft-n-max 4 --spec-draft-p-min 0.4 \
+  --temp 1.0 --top-p 0.95 --top-k 20 --min-p 0.01 --repeat-penalty 1.05 \
+  --threads -1 --numa distribute --load-mode mlock --ctx-size 131072 \
+  --flash-attn on --cache-type-k f16 --cache-type-v f16 --jinja
+```
+
+Full unit: `systemd/llama-server-glm5-dflash2.service`. Needs a llama.cpp
+build with the `glm5next` arch + dflash spec paths (ours:
+`unslothai/llama.cpp` `glm5next/upstream` lineage, PR #27754; DFlash2
+converter support merged upstream in PR #27342).
+
+## Conversion
+
+The draft GGUF is built with llama.cpp's own `convert_hf_to_gguf.py`
+(`DFlashModel`/`DFlash2DraftModel` in `conversion/qwen.py`) — no separate
+converter ships here. The gate scripts above re-verify any rebuild: 81-tensor
+inventory, metadata parity vs `incoai/Qwen3.8-27B-DFlash2-GGUF`, conv-base
+layout, `dflash.target_layers` off-by-one, `block_size=8`.
 
 ## Source material
 
 | Item | Location |
 |---|---|
 | DFlash2 weights (BF16 safetensors) | `incoai/GLM-5.3-Flash-DFlash2` on HF |
-| DFlash2 architecture reference | SGLang PR [#36708](https://github.com/sgl-project/sglang/pull/36708) |
-| GLM-5.3-Flash GGUF (target model) | `unsloth/GLM-5.3-Flash-GGUF` (UD-IQ4_XS) |
-| llama.cpp fork with `glm5next` arch | `unslothai/llama.cpp` branch `glm5next/upstream` |
-| llama.cpp fork with dflash spec framework | `quimmedes/cafe-llama.cpp` |
-| DFlash blog | https://inco.ai/blog/dflash2/ |
+| DFlash2 architecture reference | SGLang PR [#36708](https://github.com/sgl-project/sglang/pull/36708), `sglang/srt/models/dflash.py` |
+| GLM-5.3-Flash GGUF (target) | `unsloth/GLM-5.3-Flash-GGUF` (UD-IQ4_XS) |
+| llama.cpp `glm5next` arch | `unslothai/llama.cpp` branch `glm5next/upstream` |
+| DFlash blog / paper | https://inco.ai/blog/dflash2/ |
+| GPU acceptance reference (same target) | `brandonmusic/GLM-5.3-Flash-tr3-4bpw` runtime-results (5.428 GSM8K) |
 
 ## Quality gates
 
 This repo uses the [DevGate Agentic Framework](https://github.com/TheArchitectit/DevGate-Agentic-Framework), vendored at `.devgate/` (plain copy, BSD 3-Clause — see `.devgate/LICENSE`).
 
-**File-size limit:** all source files must stay under 500 lines (soft warning at 300). When a file hits the soft limit, split it rather than squeezing toward the hard limit.
+**File-size limit:** all source files stay under 500 lines (soft warning at 300). When a file hits the soft limit, split it rather than squeezing toward the hard limit.
 
 Run the gates before committing (all must pass):
 
 ```bash
-# Pattern scan (known failure patterns, any language)
-node .devgate/scripts/guardrails-scan.mjs
-
-# Semantic scan (TS/JS AST — skips automatically, no TS/JS in this repo)
-node .devgate/scripts/semantic-scan.mjs
-
-# Regression check: file sizes, package audit, failure-registry patterns
+node .devgate/scripts/guardrails-scan.mjs          # pattern scan
+node .devgate/scripts/semantic-scan.mjs            # TS/JS AST (skips: none here)
 python3 .devgate/scripts/regression_check.py --all --pre-commit
-
-# Tests (discovers test_*.py / *.test.js; currently the framework's own self-tests)
 node .devgate/scripts/run-tests.mjs
 ```
 
-Sprint bugs that must not regress are recorded in `.devgate/.guardrails/failure-registry.jsonl` (append-only). After fixing a bug, add an entry with `python3 .devgate/scripts/log_failure.py --help`.
+Sprint bugs that must not regress are recorded in
+`.devgate/.guardrails/failure-registry.jsonl` (append-only; `log_failure.py`).
+Release discipline: secret battery over tree + full history before any push;
+benchmark claims ship with their raw dumps; solo-run rule on the shared box.
 
-## License notes
+## License
 
-DFlash2 weights: CC BY-NC-ND 4.0 (research/eval only — no commercial use without inco.ai license). Code in this repo: MIT. DevGate framework: BSD 3-Clause (`.devgate/LICENSE`).
+Code and docs in this repo: **MIT** (see `LICENSE`). Model weights are
+separate artifacts with their own licenses — the DFlash2 draft derives from
+`incoai/GLM-5.3-Flash-DFlash2` (**CC-BY-NC-ND-4.0**, research/eval only; no
+commercial use without inco.ai), target from zai-org/GLM-5.3-Flash. The GGUF
+model card carries the weight license; this repo's MIT covers only our
+scripts, tests, and notes. DevGate framework: BSD 3-Clause (`.devgate/LICENSE`).
