@@ -31,9 +31,12 @@ live state, commit per step). Escalation triggers in REQ-WF-4.
   synthetic fallback + skip guard). run-tests now 2 pass / 0 fail, 16.5s
   against the 120s/file cap (the dynamic-timeout carry-over: cap per file is
   wired and ample; no test needs >30s today).
-- [ ] **T4** — secret scan at release commit: tree + `git log -p --all` +
-  `git ls-tree` large-blob audit. Gate: zero findings any tier. Any finding
-  → STOP + surface (REQ-WF-4).
+- [x] **T4 COMPLETE 2026-08-30** — gitleaks v8.21.2 on tree + full history:
+  "no leaks found" (32 commits, report /tmp/gitleaks_report.json). Large-blob
+  audit: zero blobs >5 MB EVER in history; pack 219 KiB; largest tracked file
+  69 KB (benchmarks JSONL). Regex belt (hf_/sk-/ghp_/AKIA/private-key/slack/
+  google patterns) clean tree + `git log -p --all`. Zero findings all tiers →
+  close-out authorized.
 - [ ] **T5** — create public repo (name: dflash2-llamacpp; decide org vs user001
   namespace; LICENSE MIT for code + note draft weights cc-by-nc-nd-4.0), push,
   then flip private→public. Gate: repo 200s, CI/Actions off, README renders.
