@@ -1,0 +1,10 @@
+4.50.937.755 I [moe-probe] n2 calls=252 pairs=4032 touched=3798 collisions=234 col_rate=0.0580 cne1[1,2,3,4-8,>8]=3564,234,0,0,0
+4.50.937.764 I [moe-probe] n4 calls=378 pairs=12096 touched=8118 collisions=3978 col_rate=0.3289 cne1[1,2,3,4-8,>8]=5688,1296,720,414,0
+4.50.937.765 I [moe-probe] n7 calls=378 pairs=21168 touched=13641 collisions=7527 col_rate=0.3556 cne1[1,2,3,4-8,>8]=9426,2511,813,891,0
+4.50.937.784 I [moe-probe] n8 calls=2646 pairs=169344 touched=101226 collisions=68118 col_rate=0.4022 cne1[1,2,3,4-8,>8]=65796,19608,7800,8022,0
+4.50.937.787 I [moe-probe] n0 calls=378 pairs=48384 touched=25749 collisions=22635 col_rate=0.4678 cne1[1,2,3,4-8,>8]=15912,5094,2088,2178,477
+4.14.288.984 I [moe-probe] n2 calls=252 pairs=4032 touched=3798 collisions=234 col_rate=0.0580 cne1[1,2,3,4-8,>8]=3564,234,0,0,0
+4.14.288.990 I [moe-probe] n3 calls=378 pairs=9072 touched=6789 collisions=2283 col_rate=0.2517 cne1[1,2,3,4-8,>8]=5034,1227,528,0,0
+4.14.288.991 I [moe-probe] n4 calls=378 pairs=12096 touched=8118 collisions=3978 col_rate=0.3289 cne1[1,2,3,4-8,>8]=5688,1296,720,414,0
+4.14.288.999 I [moe-probe] n5 calls=4536 pairs=181440 touched=125382 collisions=56058 col_rate=0.3090 cne1[1,2,3,4-8,>8]=90354,21780,7659,5589,0
+4.14.289.002 I [moe-probe] n0 calls=378 pairs=48384 touched=25749 collisions=22635 col_rate=0.4678 cne1[1,2,3,4-8,>8]=15912,5094,2088,2178,477

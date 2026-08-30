@@ -1,0 +1,40 @@
+== window1 start Sun Aug 30 05:16:30 AM UTC 2026 avail=246GB
+== waiting for /health (cold 147GB load; up to 1800s)...
+== healthy
+-- rep 1
+RESULT rep=1 ngen=64 tokrate=4.2161 cycle_s=1.8975 ev_ms=0.0
+-- rep 2
+RESULT rep=2 ngen=64 tokrate=4.3274 cycle_s=1.8487 ev_ms=0.0
+-- rep 3
+RESULT rep=3 ngen=64 tokrate=4.2876 cycle_s=1.8658 ev_ms=0.0
+4.37.950.079 D spec common_specu: called impl draft-dflash, hist size = 68, call_count = 23, gen = 7
+4.39.564.141 D spec common_specu: called impl draft-dflash, hist size = 76, call_count = 24, gen = 6
+4.40.956.440 I spec common_specu: statistics     draft-dflash: #calls(b,g,a) =    3     24     24, #gen drafts =     24, #acc drafts =    24, #gen tokens =    165, #acc tokens =   165, #mean acc len = 7.88, #acc rate/pos = (1.000, 1.000, 1.000, 1.000, 1.000, 1.000, 0.875), dur(b,g,a) = 0.016, 1897.378, 0.015 ms
+4.50.937.755 I [moe-probe] n2 calls=252 pairs=4032 touched=3798 collisions=234 col_rate=0.0580 cne1[1,2,3,4-8,>8]=3564,234,0,0,0
+4.50.937.764 I [moe-probe] n4 calls=378 pairs=12096 touched=8118 collisions=3978 col_rate=0.3289 cne1[1,2,3,4-8,>8]=5688,1296,720,414,0
+4.50.937.765 I [moe-probe] n7 calls=378 pairs=21168 touched=13641 collisions=7527 col_rate=0.3556 cne1[1,2,3,4-8,>8]=9426,2511,813,891,0
+4.50.937.784 I [moe-probe] n8 calls=2646 pairs=169344 touched=101226 collisions=68118 col_rate=0.4022 cne1[1,2,3,4-8,>8]=65796,19608,7800,8022,0
+4.50.937.787 I [moe-probe] n0 calls=378 pairs=48384 touched=25749 collisions=22635 col_rate=0.4678 cne1[1,2,3,4-8,>8]=15912,5094,2088,2178,477
+DONE-K1 tag=win1_n7
+DONE-W1a rc=0
+== waiting for /health (cold 147GB load; up to 1800s)...
+== healthy
+-- rep 1
+RESULT rep=1 ngen=64 tokrate=3.6749 cycle_s=1.3606 ev_ms=0.0
+-- rep 2
+RESULT rep=2 ngen=64 tokrate=3.4927 cycle_s=1.4316 ev_ms=0.0
+-- rep 3
+RESULT rep=3 ngen=64 tokrate=3.5934 cycle_s=1.3914 ev_ms=0.0
+4.01.845.008 D spec common_specu: called impl draft-dflash, hist size = 75, call_count = 38, gen = 4
+4.04.093.530 D spec common_specu: called impl draft-dflash, hist size = 80, call_count = 39, gen = 2
+4.04.878.930 I spec common_specu: statistics     draft-dflash: #calls(b,g,a) =    3     39     39, #gen drafts =     39, #acc drafts =    39, #gen tokens =    150, #acc tokens =   150, #mean acc len = 4.85, #acc rate/pos = (1.000, 1.000, 0.923, 0.923), dur(b,g,a) = 0.013, 2992.674, 0.027 ms
+4.14.288.984 I [moe-probe] n2 calls=252 pairs=4032 touched=3798 collisions=234 col_rate=0.0580 cne1[1,2,3,4-8,>8]=3564,234,0,0,0
+4.14.288.990 I [moe-probe] n3 calls=378 pairs=9072 touched=6789 collisions=2283 col_rate=0.2517 cne1[1,2,3,4-8,>8]=5034,1227,528,0,0
+4.14.288.991 I [moe-probe] n4 calls=378 pairs=12096 touched=8118 collisions=3978 col_rate=0.3289 cne1[1,2,3,4-8,>8]=5688,1296,720,414,0
+4.14.288.999 I [moe-probe] n5 calls=4536 pairs=181440 touched=125382 collisions=56058 col_rate=0.3090 cne1[1,2,3,4-8,>8]=90354,21780,7659,5589,0
+4.14.289.002 I [moe-probe] n0 calls=378 pairs=48384 touched=25749 collisions=22635 col_rate=0.4678 cne1[1,2,3,4-8,>8]=15912,5094,2088,2178,477
+DONE-K1 tag=win1_n4
+DONE-W1b rc=0
+RESTORED :8100 rc=0
+HEALTH :8100 FAIL
+DONE-WINDOW1
