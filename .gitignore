@@ -8,3 +8,9 @@ node_modules/
 # GGUF artifacts / model dumps
 *.gguf
 *_v2.jsonl
+
+# large regenerable golden fixtures + build artifacts (recreate via scripts)
+tests/golden/fixtures/*.npy
+tests/golden/fixtures/*.npz
+tests/golden/fixtures/*.bin
+tests/golden/build/
