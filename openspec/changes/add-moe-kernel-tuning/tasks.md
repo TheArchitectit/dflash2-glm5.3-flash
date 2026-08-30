@@ -9,7 +9,7 @@ commit per step, DONE-token to the window log.
 
 - [x] proposal / design / tasks.
 - [x] spec delta `specs/kernels/spec.md` (REQ-K1..K3).
-- [ ] `scripts/k1_cost_curve.sh` — boots probe-build server at
+- [x] `scripts/k1_cost_curve.sh` — boots probe-build server at
   n_max {7,4} with matching-length full-acceptance synth rates (the fork
   asserts `rates.size()==n_max`), runs `ab_8prompt.py --n-predict 64`
   ×3 reps, parses server decode telemetry, emits `RESULT cost_n=<n>
@@ -30,12 +30,20 @@ commit per step, DONE-token to the window log.
 
 ## K3 — windows (each: stop :8100 → preflight → run → kill → restore → commit)
 
-- [ ] W1 cost curve: n_max=8 + synth 1×7 → reproduce 2.09 s ±10% kill-check
-  → n_max=4 + synth 1×3. Raw: `benchmarks/raw/k1_cost_curve.log`.
-- [ ] W2 probe: same synth run with `LLAMA_MOE_PROBE=1`; journal →
-  `benchmarks/raw/moe_probe.json` (`scripts/moe_probe_parse.py`).
-- [ ] W3 attribution: `perf record` (lbr) during synth n=8; `perf report`
-  top-20 → `benchmarks/raw/k3_perf.txt`.
+- [x] **W1 cost curve COMPLETE 2026-08-30 05:26** — cost(8)=1.866 s,
+  cost(5)=1.391 s; fit a+b·(n−1): **a=0.759** (== single-token 0.758,
+  weight traffic amortized), **b=0.158 s = 0.21×/token (FLAT)**. Kill-check:
+  1.87 s at 16k ctx vs Sprint-5.1 2.09 s at 131k — linear in ctx, passes.
+  Raw: `benchmarks/raw/k1_win1_n{7,4}.log`, `k1_window1.log`.
+- [x] **W2 probe COMPLETE (same windows)** — 8-token verify touches **38.3
+  distinct experts**/64 slots vs uncorrelated floor 57.9; cne1>8 never;
+  excess-vs-n2-baseline col_rate +0.34. `moe_probe_win1.txt` +
+  `scripts/moe_probe_parse.py`.
+- [ ] W3 attribution: `perf record` (lbr, paranoid=2 raised for window)
+  during synth n_max=7 sustained decode; top symbols →
+  `benchmarks/raw/k3_perf_report.txt`. Decides K-4: MoE share ≥35% →
+  IQ4_XS **repack** (b); ssm/KDA ≥30% → KDA batching (c); else retire the
+  direction with the published flat-curve result.
 - [ ] K-4 gate: `research/09-kernel-findings.md` (fit, shares, histogram,
   branch chosen) + `research/07` RC-1 amendment + `research/08` trend rows.
 - [ ] If branch chosen: open `kernel-<lever>` openspec change; else record
