@@ -36,8 +36,10 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-CHECKPOINT = "/mnt/ollama/models/glm-5.3-flash/dflash2/model.safetensors"
-CONFIG = "/mnt/ollama/models/glm-5.3-flash/dflash2/config.json"
+CHECKPOINT = os.environ.get(
+    "DFLASH2_CKPT", "/mnt/ollama/models/glm-5.3-flash/dflash2/model.safetensors")
+CONFIG = os.environ.get(
+    "DFLASH2_CONFIG", "/mnt/ollama/models/glm-5.3-flash/dflash2/config.json")
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURES = os.path.join(HERE, "fixtures")
 TARGET_LAYERS_0IDX = [5, 14, 24, 33, 42]

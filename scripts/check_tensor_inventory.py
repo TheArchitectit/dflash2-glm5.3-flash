@@ -13,6 +13,7 @@ Compares the converted GGUF against the checkpoint's safetensors header:
 Exit 0 = pass. Any mismatch prints the diff and exits 1 (STOP GATE).
 """
 import json
+import os
 import struct
 import sys
 from pathlib import Path
@@ -73,9 +74,9 @@ def main() -> int:
         return 2
     gguf_path = Path(sys.argv[1])
     ckpt = sys.argv[sys.argv.index("--ckpt") + 1] if "--ckpt" in sys.argv else \
-        "/mnt/ollama/models/glm-5.3-flash/dflash2/model.safetensors"
+        os.environ.get("DFLASH2_CKPT", "/mnt/ollama/models/glm-5.3-flash/dflash2/model.safetensors")
 
-    sys.path.insert(0, "/mnt/ollama/models/llama-cpp-glm5/gguf-py")
+    sys.path.insert(0, os.environ.get("GGUF_PY", "/mnt/ollama/models/llama-cpp-glm5/gguf-py"))
     from gguf import GGUFReader  # noqa: E402
 
     ckpt_shapes = read_safetensors_header(ckpt)

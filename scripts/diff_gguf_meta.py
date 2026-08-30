@@ -11,6 +11,7 @@ off-by-one STOP GATE).
 
 Exit 0 = only allowlisted diffs. Exit 1 = unexpected difference (STOP GATE).
 """
+import os
 import sys
 
 # keys that are expected to differ (model-specific), with a reason
@@ -76,16 +77,15 @@ MUST_MATCH = {
 
 
 def load(path):
-    sys.path.insert(0, "/mnt/ollama/models/llama-cpp-glm5/gguf-py")
+    sys.path.insert(0, os.environ.get("GGUF_PY", "/mnt/ollama/models/llama-cpp-glm5/gguf-py"))
     from gguf import GGUFReader
     r = GGUFReader(path)
     out = {}
     for f in r.fields.values():
-        if f.name == "general.architecture" or True:
-            try:
-                out[f.name] = f.contents()
-            except Exception as e:
-                out[f.name] = f"<unreadable: {e}>"
+        try:
+            out[f.name] = f.contents()
+        except Exception as e:
+            out[f.name] = f"<unreadable: {e}>"
     return out
 
 
@@ -120,7 +120,11 @@ def main():
         if k in MUST_MATCH:
             want = MUST_MATCH[k]
             got = norm(ours[k])
-            if list(got) != list(want) if isinstance(want, list) else got != want:
+            if isinstance(want, list):
+                mismatch = list(got) != list(want)
+            else:
+                mismatch = got != want
+            if mismatch:
                 ok = False
                 print(f"MUST-MATCH FAIL {k}: ours={got}, want={want}")
         elif k in ALLOWED:

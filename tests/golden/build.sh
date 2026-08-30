@@ -3,7 +3,7 @@
 # Usage: tests/golden/build.sh
 set -euo pipefail
 
-LLAMACPP=/mnt/ollama/models/llama-cpp-glm5
+LLAMACPP="${LLAMACPP:-/mnt/ollama/models/llama-cpp-glm5}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 BUILD="$HERE/build"
 mkdir -p "$BUILD"

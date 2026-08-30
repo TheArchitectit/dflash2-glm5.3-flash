@@ -16,7 +16,7 @@ import sys
 
 import numpy as np
 
-sys.path.insert(0, "/mnt/ollama/models/llama-cpp-glm5/gguf-py")
+sys.path.insert(0, os.environ.get("GGUF_PY", "/mnt/ollama/models/llama-cpp-glm5/gguf-py"))
 import gguf  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -24,6 +24,8 @@ FIXTURES = os.path.join(HERE, "fixtures")
 OUT = os.path.join(FIXTURES, "mock_target.gguf")
 N_EMBD = 4096
 VOCAB = 154880
+DRAFT_GGUF = os.environ.get(
+    "DFLASH2_DRAFT_GGUF", "/mnt/ollama/models/glm-5.3-flash/dflash2-gguf/dflash2-glm-f16.gguf")
 
 
 def main():
@@ -32,7 +34,7 @@ def main():
     emb_f16 = emb.astype(np.float16)
 
     # copy the draft's tokenizer verbatim (identical vocab ids)
-    r = gguf.GGUFReader('/mnt/ollama/models/glm-5.3-flash/dflash2-gguf/dflash2-glm-f16.gguf')
+    r = gguf.GGUFReader(DRAFT_GGUF)
     f = {str(i.name): i for i in r.fields.values()}
     toks = f['tokenizer.ggml.tokens'].contents()
     typs = f['tokenizer.ggml.token_type'].contents()

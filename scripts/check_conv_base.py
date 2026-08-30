@@ -14,13 +14,15 @@ For each of the 10 conv-base tensors (5 layers x attn+ffn):
 
 Exit 0 = pass.
 """
+import os
 import struct
 import sys
 from pathlib import Path
 
 import numpy as np
 
-CKPT_DEFAULT = "/mnt/ollama/models/glm-5.3-flash/dflash2/model.safetensors"
+CKPT_DEFAULT = os.environ.get(
+    "DFLASH2_CKPT", "/mnt/ollama/models/glm-5.3-flash/dflash2/model.safetensors")
 
 
 def read_safetensors(path):
@@ -55,7 +57,7 @@ def main():
     gguf_path = Path(sys.argv[1])
     ckpt_path = sys.argv[sys.argv.index("--ckpt") + 1] if "--ckpt" in sys.argv else CKPT_DEFAULT
 
-    sys.path.insert(0, "/mnt/ollama/models/llama-cpp-glm5/gguf-py")
+    sys.path.insert(0, os.environ.get("GGUF_PY", "/mnt/ollama/models/llama-cpp-glm5/gguf-py"))
     from gguf import GGUFReader  # noqa: E402
 
     ckpt = read_safetensors(ckpt_path)
