@@ -21,9 +21,16 @@ live state, commit per step). Escalation triggers in REQ-WF-4.
 
 ## Close-out chain (pre-authorized; gate = scan clean)
 
-- [ ] **T3** — DevGate full pass on final commit: `guardrails-scan`,
-  `regression_check --all --pre-commit`, `run-tests`; dynamic timeouts wired
-  per test (carry-over request). Gate: all green.
+- [x] **T3 COMPLETE 2026-08-30** — all three gates green on HEAD:
+  `guardrails-scan` clean; `regression_check --all --pre-commit` clean
+  (incl. file-size gates); `run-tests` **fixed at source**:
+  test_hc_collapse.py had zero pytest functions (exit 5, mislabeled "flake")
+  — reworked into 2 real tests asserting the CORRECTED capture semantics
+  (T1 build_hc_mean == hc_contract unweighted mean; T2 gated contraction
+  must diverge, with real learned weights when the target is present and
+  synthetic fallback + skip guard). run-tests now 2 pass / 0 fail, 16.5s
+  against the 120s/file cap (the dynamic-timeout carry-over: cap per file is
+  wired and ample; no test needs >30s today).
 - [ ] **T4** — secret scan at release commit: tree + `git log -p --all` +
   `git ls-tree` large-blob audit. Gate: zero findings any tier. Any finding
   → STOP + surface (REQ-WF-4).

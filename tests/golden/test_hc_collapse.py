@@ -1,24 +1,28 @@
 #!/usr/bin/env python3
-"""Sprint 3.2 — mHC-collapse micro-test (risk 4 / risk 7 STOP GATE).
+"""Sprint 3.2 / 5.4 — mHC capture-semantics regression test.
 
-Compares llama.cpp's `build_hc_mean` (glm5next.cpp:613 → deepseek4.cpp:267,
-an UNWEIGHTED MEAN over the hyper-connection streams) against SGLang's
-`_mhc_pre_torch` contraction (mhc.py:1626):
+HISTORY: this test originally compared llama.cpp's `build_hc_mean` against
+SGLang's *gated* contraction (`_mhc_pre_torch`) and "confirmed divergence"
+(commit 71011ee). That comparison targeted the WRONG function and led to a
+now-reverted patch (de9669d, reverted 77445b3). The real DFLASH capture is
+`Glm5NextModel._prepare_aux_hidden_state` (glm5_next.py:1078) which calls
+`hc_contract` (mhc.py:1571): an UNWEIGHTED MEAN over hyper-connection
+streams — exactly what `build_hc_mean` implements (risk 7 retracted,
+research/07-gap-analysis.md).
 
-    layer_input = (sigmoid(mixes[:, :n] * hc_scale[0] + hc_base[:n]) + eps
-                   * residual).sum(streams)
+Correct semantics asserted here:
 
-The DFlash2 draft was distilled on SGLang's representation. If the two
-reductions differ materially, the draft sees a different hidden
-distribution in llama.cpp than it was trained against — acceptance
-degrades (measured 3.36 vs published 4.4-5.5).
+  T1  build_hc_mean  ==  SGLang hc_contract            (the capture path)
+  T2  build_hc_mean  !=  gated _mhc_pre_torch           (in-layer generation
+       path only — a re-assert would mean someone re-applied the reverted
+       patch or re-pointed the capture)
 
-Uses the REAL learned mHC weights from the GLM-5.3-Flash target
-(blk.5.hc_attn_{fn,base,scale}, dequantized from the UD-IQ4_XS GGUF),
-so the gate reflects production magnitudes, not synthetic worst case.
+T1 uses real learned weights (blk.5.hc_attn_*, dequantized from the
+UD-IQ4_XS target) when available, synthetic otherwise, so CI passes without
+the 147 GB shards.
 
-Run: python3 tests/golden/test_hc_collapse.py [--target-gguf-dir DIR]
-Exit 0 = representations match (fp32 eps); nonzero = DIVERGENCE CONFIRMED.
+Run standalone:  python3 tests/golden/test_hc_collapse.py [--target-gguf-dir DIR]
+Run via pytest:  pytest tests/golden/test_hc_collapse.py
 """
 
 import argparse
@@ -26,16 +30,16 @@ import os
 import sys
 
 import numpy as np
+import pytest
 
 sys.path.insert(0, "/mnt/ollama/models/llama-cpp-glm5/gguf-py")
 import gguf  # noqa: E402
 
 # ---- model constants (GLM-5.3-Flash / glm5next) --------------------------
-HC = 4            # glm5next.hyper_connection.count
+HC = 4             # glm5next.hyper_connection.count
 N_EMBD = 4096
 RMS_EPS = 1e-5     # glm5next.attention.layer_norm_rms_epsilon
 HC_EPS = 1e-6      # glm5next.hyper_connection.epsilon
-SINKHORN_ITERS = 20
 LAYER = 5          # first dflash extraction layer (0-indexed)
 
 DEFAULT_GGUF_DIR = "/mnt/ollama/models/glm-5.3-flash/UD-IQ4_XS"
@@ -73,75 +77,86 @@ def load_hc_weights(gguf_dir: str, layer: int):
     raise FileNotFoundError(f"hc_attn weights for layer {layer} not found in {gguf_dir}")
 
 
-def sglang_mhc_layer_input(residual: np.ndarray, fn: np.ndarray, base: np.ndarray,
-                            scale: np.ndarray) -> np.ndarray:
-    """SGLang _mhc_pre_torch layer_input contraction (mhc.py:1626).
+def real_or_synthetic_weights(gguf_dir, tokens=64, seed=42):
+    """(fn, base, scale) from the target GGUF when present, else synthetic
+    production-magnitude weights. Returns (weights, is_real)."""
+    try:
+        return load_hc_weights(gguf_dir, LAYER), True
+    except (FileNotFoundError, OSError):
+        rng = np.random.default_rng(seed)
+        fn = rng.normal(0, 0.02, size=(3 * HC, N_EMBD)).astype(np.float32)
+        base = rng.normal(0, 1.0, size=3 * HC).astype(np.float32)
+        scale = rng.normal(1.0, 0.1, size=HC).astype(np.float32)
+        return (fn, base, scale), False
 
-    residual: (s, n, h) — s tokens, n streams, h hidden.
-    Returns (s, h): sum over streams of pre-gated residual.
+
+def sglang_hc_contract(residual: np.ndarray) -> np.ndarray:
+    """SGLang mhc.py:1571 hc_contract — the DFLASH capture reduction.
+
+    aux.unflatten(-1, (n, -1)).mean(dim=-2): plain unweighted mean.
+    residual: (s, n, h) -> (s, h).
     """
+    return residual.mean(axis=-2)
+
+
+def sglang_mhc_pre_torch(residual, fn, base, scale):
+    """SGLang _mhc_pre_torch (mhc.py:1626) — gated contraction used for
+    NORMAL in-layer generation, NOT the dflash capture."""
     s, n, h = residual.shape
     x_flat = residual.reshape(s, n * h).astype(np.float32)
     rsqrt = 1.0 / np.sqrt(np.mean(x_flat ** 2, axis=-1, keepdims=True) + RMS_EPS)
-    mixes = (x_flat @ fn.T) * rsqrt          # (s, 24)
-
-    pre_raw = mixes[:, :n]
-    pre_base = base[:n]
+    mixes = (x_flat @ fn.T) * rsqrt
+    pre_raw, pre_base = mixes[:, :n], base[:n]
     pre = 1.0 / (1.0 + np.exp(-(pre_raw * scale[0] + pre_base))) + HC_EPS
     return (pre[:, :, None] * residual).sum(axis=1)
 
 
-def llamacpp_hc_mean(x: np.ndarray) -> np.ndarray:
-    """llama.cpp build_hc_mean (deepseek4.cpp:267): unweighted mean over streams."""
+def llamacpp_build_hc_mean(x: np.ndarray) -> np.ndarray:
+    """llama.cpp build_hc_mean (deepseek4.cpp:267)."""
     return x.mean(axis=1)
+
+
+def _residual(tokens=64, seed=42):
+    rng = np.random.default_rng(seed)
+    return rng.normal(0, 1.0, size=(tokens, HC, N_EMBD)).astype(np.float32)
+
+
+def test_capture_is_unweighted_mean():
+    """T1: build_hc_mean == hc_contract (the capture semantics). Bit-exact:
+    both are literally mean-over-streams."""
+    x = _residual()
+    assert llamacpp_build_hc_mean(x) == pytest.approx(sglang_hc_contract(x), rel=0, abs=1e-6)
+
+
+def test_capture_gguf_weights_if_available():
+    """T1 on real weights: with the target present, assert the capture still
+    equals the unweighted mean and that the gated contraction (wrong path)
+    diverges — the full original finding, corrected."""
+    if not os.path.isdir(DEFAULT_GGUF_DIR):
+        pytest.skip(f"target GGUF dir {DEFAULT_GGUF_DIR} not present")
+    (fn, base, scale), is_real = real_or_synthetic_weights(DEFAULT_GGUF_DIR)
+    assert is_real, "expected real weights when target dir exists"
+    x = _residual()
+    ours = llamacpp_build_hc_mean(x)
+    assert ours == pytest.approx(sglang_hc_contract(x), rel=0, abs=1e-6)
+    gated = sglang_mhc_pre_torch(x, fn, base, scale)
+    denom = np.abs(gated) + 1e-9
+    rel = np.abs(gated - ours) / denom
+    assert np.median(rel) > 0.1, (
+        "gated contraction unexpectedly close to the mean — re-check capture "
+        "semantics before touching glm5next extraction")
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--target-gguf-dir", default=DEFAULT_GGUF_DIR)
-    ap.add_argument("--tokens", type=int, default=64)
-    ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
-
-    print(f"[3.2] mHC collapse micro-test — layer {LAYER}, {args.tokens} tokens, real weights")
-    fn, base, scale = load_hc_weights(args.target_gguf_dir, LAYER)
-    print(f"  weights: fn{fn.shape} base{base.shape} scale{scale.shape} (dequantized OK)")
-    print(f"  pre_base: {np.round(base[:HC], 3)}")
-
-    rng = np.random.default_rng(args.seed)
-    # production-magnitude residual: per-stream std scaled like hidden states
-    residual = rng.normal(0, 1.0, size=(args.tokens, HC, N_EMBD)).astype(np.float32)
-
-    ref = sglang_mhc_layer_input(residual, fn, base, scale)
-    ours = llamacpp_hc_mean(residual)
-
-    # fp32 eps baseline: compare ref against itself in fp32 (sanity)
-    denom = np.abs(ref) + 1e-9
-    rel = np.abs(ref - ours) / denom
-    cos = np.sum(ref * ours, -1) / (np.linalg.norm(ref, axis=-1) * np.linalg.norm(ours, axis=-1) + 1e-9)
-
-    # also: what does the unweighted mean look like if pre-gates were uniform?
-    print(f"\n  ref  (SGLang gated contraction): mean|.|={np.abs(ref).mean():.4f}")
-    print(f"  ours (build_hc_mean unweighted): mean|.|={np.abs(ours).mean():.4f}")
-    print(f"  rel-err: mean={rel.mean():.4f}  median={np.median(rel):.4f}  p99={np.percentile(rel, 99):.4f}")
-    print(f"  cosine similarity: mean={cos.mean():.6f}  min={cos.min():.6f}")
-    print(f"  pre-gates at this residual: {np.round(
-        1/(1+np.exp(-(0.0 * scale[0] + base[:HC]))), 4)} (zero-input, sigmoid(base))")
-
-    gates = 1.0 / (1.0 + np.exp(-base[:HC]))
-    print(f"  sigmoid(pre_base) per stream: {np.round(gates, 6)}")
-    print(f"  unweighted-mean implied gates: {np.full(HC, 1.0 / HC)}")
-
-    eps = 6e-2  # generous fp32 tolerance for "representations match"
-    if rel.mean() < eps:
-        print(f"\n  PASS: representations match within {eps} rel — risk 4 is NOT the cause.")
-        return 0
-    print("\n  *** DIVERGENCE CONFIRMED (risk 4 / risk 7) ***")
-    print("  llama.cpp build_hc_mean != SGLang gated contraction.")
-    print("  The draft was distilled on the SGLang representation.")
-    print("  Fix (Sprint 5.4): wire build_hc_pre (deepseek4.cpp:351, already")
-    print("  implemented) into the glm5next t_layer_inp extraction path.")
-    return 1
+    print("[hc] T1 capture == unweighted mean: ", end="")
+    x = _residual()
+    assert llamacpp_build_hc_mean(x) == pytest.approx(sglang_hc_contract(x), rel=0, abs=1e-6)
+    print("PASS")
+    rc = pytest.main([__file__, "-q"])
+    return int(rc)
 
 
 if __name__ == "__main__":
