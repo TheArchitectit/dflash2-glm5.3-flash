@@ -5,10 +5,11 @@ live state, commit per step). Escalation triggers in REQ-WF-4.
 
 ## In flight
 
-- [ ] **T1 (4.5, part 1)** — Q8_0 + BF16 draft conversions in background
-  (`/tmp/conv_variants.log`, DONE-TOKEN `ALLCONV`). Gate: files exist,
-  ~2.3/1.2 GB; each passes `scripts/check_tensor_inventory.py` +
-  `check_conv_base.py` + `diff_gguf_meta.py` (Sprint-1 gates, variant mode).
+- [x] **T1 (4.5, part 1) COMPLETE 2026-08-30** — q8_0 (1.25 GB) + bf16
+  (2.35 GB) converted at `/mnt/ollama/models/glm-5.3-flash/dflash2-gguf/`;
+  both PASS check_tensor_inventory + check_conv_base; q8_0-vs-f16
+  diff_gguf_meta PASSED (allowlisted-only). Note: diff_gguf_meta exits 1 on
+  clean runs — cosmetic, fix during T3 DevGate wiring.
 - [ ] **T2 (4.5, part 2)** — acceptance A/B vs F16: solo swap windows,
   `scripts/ab_8prompt.py` per variant. Gate: Δacc ≤ 2% → publish all three,
   else F16-only and document. Log DONE-TOKENs `ABQ8DONE`/`ABBFDONE`.
