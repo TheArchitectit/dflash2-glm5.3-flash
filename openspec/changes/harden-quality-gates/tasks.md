@@ -60,5 +60,23 @@ change is demonstrated red→green in the commit message, not asserted.
 
 ## G6 — upstream note (no code here)
 
-- [ ] File the adjudication fix against TheArchitectit/DevGate-Agentic-
-  Framework (vendored copy carries it; link the upstream PR here).
+- [x] Upstream-ready patch packaged at
+  `notes/devgate-upstream-adjudication-fix.md` (bug, diff, rationale,
+  verification record; the vendored copy carries the fix since `61a88ca`).
+- [ ] File the PR against TheArchitectit/DevGate-Agentic-Framework and
+  link it in that note (external repo — owner's call).
+
+## G7 — late sweep: remaining QA-report items (applied 2026-08-31)
+
+- [x] `tests/golden/replay_dflash2.cpp`: null-check ordering — the
+  `if (!ctx)` guard now precedes `llama_set_embeddings_nextn` /
+  `llama_set_causal_attn` (they dereference ctx).
+- [x] `scripts/gpu_ab.sh`: `grep -c` exits 1 on zero matches, which under
+  `set -euo pipefail` failed a CLEAN run at its last step; captured with
+  `|| true`.
+- [x] `scripts/bench_gsm8k_mirror.py`: docstring states the sampling-tail
+  caveat (top_k 40096-of-154880 approximates the published "no top-k";
+  mirror is not an exact protocol match).
+- [x] Golden-chain dead code (pyflakes): `compare_golden.py` unused
+  `json` import + dead `sc`/`ss` locals; `sglang_ref_dump.py` unused
+  `sys` import + dead `kv_size`/`pos_arr`.

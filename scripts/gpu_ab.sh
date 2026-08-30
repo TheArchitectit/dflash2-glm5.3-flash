@@ -96,6 +96,9 @@ grep -E "offload|offloaded|model size|GPU[0-9] |using device|BLAS|CUDA|Vulkan|HI
 echo "== A/B (8-prompt, corrected acceptance ruler):"
 python3 "$(dirname "$0")/ab_8prompt.py" --port "$PORT"
 echo "== smoke (draft_n>0, no asserts):"
-grep -cE "GGML_ASSERT|runtime_error" "$LOG" | sed 's/^/assert+err lines: /'
+# grep -c exits 1 on zero matches — under pipefail that would fail a CLEAN
+# run at the last step. Capture with || true instead.
+n_err=$(grep -cE "GGML_ASSERT|runtime_error" "$LOG" || true)
+echo "assert+err lines: $n_err"
 
 echo "== full log: $LOG  (append the RESULT line + your hardware to research/08)"

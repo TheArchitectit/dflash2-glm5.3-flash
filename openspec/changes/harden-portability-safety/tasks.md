@@ -17,8 +17,12 @@ observed) before its task is checked.
 - [x] `LLAMACPP="${LLAMACPP:-…}"` in `tests/golden/build.sh`.
 - [x] Override smoke: `GGUF_PY=/nonexistent python3
   tests/golden/test_hc_collapse.py` → synthetic arm PASS, real-weights
-  skip, exit 0. Remaining vars documented as pending their box-side
-  smoke in P4.
+  skip, exit 0.
+- [x] Off-box mechanism smoke (2026-08-31, venv with pip `gguf`): with
+  `GGUF_PY=/nonexistent`, all three conversion gate scripts import
+  cleanly and fail with FileNotFoundError at the ASSET path (the
+  checkpoint/GGUF, overridable via `DFLASH2_*`) — the import crash is
+  gone, exactly the intended contributor failure mode.
 
 ## P2 — deliberate publish (applied 2026-08-31)
 
