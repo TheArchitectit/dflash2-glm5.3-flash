@@ -51,8 +51,11 @@ live state, commit per step). Escalation triggers in REQ-WF-4.
 - [ ] **T7 (4.7)** — notes: z-lab/dflash discussion + llama.cpp note (mHC
   capture semantics finding, n_max/p_min levers, tiered numbers, CPU context).
   Gate: links recorded in notes.md.
-- [ ] **T8 (4.8)** — tag `v1.0.0-dflash2-glm`, README status checklist,
-  memory update, OpenSpec change marked complete, loop STOPS (empty queue).
+- [x] **T8 COMPLETE 2026-08-30** — GitHub release + tag
+  `v0.0.1-dflash2-glm` (renamed from planned v1.0.0 to match the user's
+  v0.0.1 framing): https://github.com/TheArchitectit/dflash2-llamacpp/releases/tag/v0.0.1-dflash2-glm.
+  README status already current; memory updated. OpenSpec: T1-T5 done, T6
+  deferred (staged), T7 = community posts left to the user (outward-facing).
 
 ## Loop hygiene
 
