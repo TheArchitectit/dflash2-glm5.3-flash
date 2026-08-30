@@ -42,11 +42,12 @@ live state, commit per step). Escalation triggers in REQ-WF-4.
   GitHub). Created private -> pushed -> verified (no workflows, zero model
   binaries, 95 files / 608 KB, LICENSE MIT with weights carve-out) -> flipped
   public. HTTP 200.
-- [ ] **T6 (4.6)** — HF repo `user001/GLM-5.3-Flash-DFlash2-GGUF`: F16 (+Q8_0
-  if T2 passed), README = results-dflash2-glm.md numbers + license
-  cc-by-nc-nd-4.0 (weights) + base_model: incoai/GLM-5.3-Flash-DFlash2 +
-  serving recipe verified by curl against live :8100. Gate: download-back
-  smoke + check_tensor_inventory on the re-fetched file.
+- [ ] **T6 (4.6) — DEFERRED by user 2026-08-30** ("use github until we want
+  to publish to huggingface"). GitHub repo is the working venue; HF publish
+  staged and ready: `huggingface/model-card.md` (license/base_model/bench +
+  recipe) + `huggingface/upload.sh` (gates baked, creates `lundrog/
+  GLM-5.3-Flash-DFlash2-GGUF` — token account is `lundrog`, NOT user001;
+  download-back smoke; flip public). One command to fire when the user asks.
 - [ ] **T7 (4.7)** — notes: z-lab/dflash discussion + llama.cpp note (mHC
   capture semantics finding, n_max/p_min levers, tiered numbers, CPU context).
   Gate: links recorded in notes.md.
