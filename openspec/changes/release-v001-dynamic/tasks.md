@@ -48,9 +48,10 @@ live state, commit per step). Escalation triggers in REQ-WF-4.
   recipe) + `huggingface/upload.sh` (gates baked, creates `lundrog/
   GLM-5.3-Flash-DFlash2-GGUF` — token account is `lundrog`, NOT user001;
   download-back smoke; flip public). One command to fire when the user asks.
-- [ ] **T7 (4.7)** — notes: z-lab/dflash discussion + llama.cpp note (mHC
-  capture semantics finding, n_max/p_min levers, tiered numbers, CPU context).
-  Gate: links recorded in notes.md.
+- [x] **T7 COMPLETE (drafts) 2026-08-30** — `notes/community-drafts.md`:
+  z-lab/dflash + llama.cpp discussion notes drafted with the four
+  upstream-worthy findings. POSTING LEFT TO USER (outward-facing; the loop
+  does not fire issues/threads on other people's repos unasked).
 - [x] **T8 COMPLETE 2026-08-30** — GitHub release + tag
   `v0.0.1-dflash2-glm` (renamed from planned v1.0.0 to match the user's
   v0.0.1 framing): https://github.com/TheArchitectit/dflash2-llamacpp/releases/tag/v0.0.1-dflash2-glm.
