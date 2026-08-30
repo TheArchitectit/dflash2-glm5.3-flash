@@ -37,9 +37,11 @@ live state, commit per step). Escalation triggers in REQ-WF-4.
   69 KB (benchmarks JSONL). Regex belt (hf_/sk-/ghp_/AKIA/private-key/slack/
   google patterns) clean tree + `git log -p --all`. Zero findings all tiers →
   close-out authorized.
-- [ ] **T5** — create public repo (name: dflash2-llamacpp; decide org vs user001
-  namespace; LICENSE MIT for code + note draft weights cc-by-nc-nd-4.0), push,
-  then flip private→public. Gate: repo 200s, CI/Actions off, README renders.
+- [x] **T5 COMPLETE 2026-08-30** — https://github.com/TheArchitectit/dflash2-
+  llamacpp (gh-auth account; user001 is the HF-side namespace, unused on
+  GitHub). Created private -> pushed -> verified (no workflows, zero model
+  binaries, 95 files / 608 KB, LICENSE MIT with weights carve-out) -> flipped
+  public. HTTP 200.
 - [ ] **T6 (4.6)** — HF repo `user001/GLM-5.3-Flash-DFlash2-GGUF`: F16 (+Q8_0
   if T2 passed), README = results-dflash2-glm.md numbers + license
   cc-by-nc-nd-4.0 (weights) + base_model: incoai/GLM-5.3-Flash-DFlash2 +
