@@ -16,9 +16,11 @@
 > - Golden correctness vs a faithful SGLang reimpl: ctx_hidden cos 1.0 at
 >   1e-3, candidate overlap 15-16/16
 >
-> Config findings worth carrying upstream: on MoE targets the 8-token verify
-> batch costs ~2.75× a single token (expert spread), so `n_max 4 + p_min 0.4`
-> beats full blocks end-to-end (+32% t/s), and top-k 40→20 was worth +51%.
+> Config findings worth carrying upstream: on MoE targets `n_max 4 + p_min
+> 0.4` beats full 7-token blocks end-to-end (+32% t/s), and top-k 40→20 was
+> worth +51%. Follow-up perf work (see note 3) measured the verify cost as
+> essentially flat in block width — weight traffic amortizes — so short
+> blocks win mainly via acceptance gating, not avoided expert re-reads.
 > Acceptance is ~2.7-3.6 on this target/quant across workload classes.
 > Full data + methodology: https://github.com/TheArchitectit/dflash2-llamacpp
 
@@ -43,3 +45,34 @@
 >   NOT on CPU (verify GEMM ≠ decode GEMV flips near-ties deterministically).
 >
 > Bench data + golden harness: https://github.com/TheArchitectit/dflash2-llamacpp
+
+## 3. ggml-org/llama.cpp (issue: missing AVX-512/VNNI IQ3_S path — CPU MoE bottleneck)
+
+> **IQ3_S `vec_dot` has no AVX-512 path — it is the hottest function in
+> mixed-IQ MoE decode on CPU**
+>
+> `perf record` on a GLM-5.3-Flash mixed-IQ target (routed experts =
+> 82 IQ3_S + 41 IQ4_XS + a few Q*_K tensors) under 8-token spec-verify:
+>
+> | symbol | self % |
+> |---|---|
+> | `ggml_vec_dot_iq3_s_q8_K` | **32.89%** |
+> | `ggml_vec_dot_iq4_xs_q8_K` | 5.88% |
+> | `gated_delta_net` (KDA) | 1.04% |
+>
+> The x86 tree has no `_mm512` path for either IQ dot (AVX2 `_mm256_set_epi32`
+> grid construction at `arch/x86/quants.c:3384-3478`), while RISC-V already
+> ships vl128/256/512 specializations. On AVX-512 VNNI hardware (Ice Lake+,
+> Zen4+) a `_mm512` rewrite of the IQ3_S dot — 2× width, real VNNI, and
+> possibly a cheaper grid lookup — should plausibly get 1.3-2× on the single
+> hottest function of CPU MoE inference. Our measurement box is Haswell
+> (AVX2 only, E5-2660 v3) so we cannot quantify; microbench gate we'd use:
+> ≥1.3× on IQ3_S×Q8_K at n=4096 widths before touching `mul_mat_id`.
+>
+> Related measurements (all raw + methodology public): verify cost is flat
+> in batch width — `cost(n) = 0.759 + 0.158·(n−1) s` on a 147 GB IQ4_XS/
+> IQ3_S target — and an 8-token verify touches 38.3 distinct experts (not
+> the ~58 an uncorrelated model predicts), so block-diffusion drafts should
+> be evaluated against measured, not modeled, routing. The probe counters
+> are 75 lines, env-gated (`LLAMA_MOE_PROBE=1`), on a branch if useful:
+> https://github.com/TheArchitectit/dflash2-llamacpp (research/09)
