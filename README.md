@@ -64,10 +64,31 @@ llama-server \
   --flash-attn on --cache-type-k f16 --cache-type-v f16 --jinja
 ```
 
-Full unit: `systemd/llama-server-glm5-dflash2.service`. Needs a llama.cpp
+Full unit: `systemd/llama-server-glm5-dflash2.service` — it binds
+`127.0.0.1` by default (llama-server has no auth; the in-unit comment
+explains the `0.0.0.0` opt-in). Needs a llama.cpp
 build with the `glm5next` arch + dflash spec paths (ours:
 `unslothai/llama.cpp` `glm5next/upstream` lineage, PR #27754; DFlash2
 converter support merged upstream in PR #27342).
+
+## Environment overrides
+
+Every machine-local path in the harness is overridable — defaults point
+at the measurement box, everything else runs via these
+(harness-portability REQ-HP1):
+
+| Variable | Used by | Points at |
+|---|---|---|
+| `GGUF_PY` | `check_tensor_inventory`, `diff_gguf_meta`, `check_conv_base`, `make_mock_target`, `test_hc_collapse` | a llama.cpp checkout's `gguf-py/` (for `import gguf`) |
+| `DFLASH2_CKPT` | `check_tensor_inventory` (`--ckpt` default), `check_conv_base`, `sglang_ref_dump` | DFlash2 `model.safetensors` |
+| `DFLASH2_CONFIG` | `sglang_ref_dump` | DFlash2 `config.json` |
+| `DFLASH2_DRAFT_GGUF` | `make_mock_target` | converted draft GGUF (tokenizer source) |
+| `DFLASH2_TARGET_GGUF_DIR` | `test_hc_collapse` | dir with target GGUF shards (real-weights arm) |
+| `LLAMACPP` | `tests/golden/build.sh` | fork tree (`include/`, `build/*.a`) |
+| `SRC`, `REPO`, `FLIP_PUBLIC` | `huggingface/upload.sh` | upload source dir / HF repo / skip the public-flip prompt |
+| `BIN`, `MODEL`, `DRAFT` | `k1_cost_curve.sh`, `w3_perf_attr.sh`, `gpu_ab.sh` | server binary / target GGUF / draft GGUF |
+
+Golden-chain regeneration end-to-end: `docs/golden-regen.md`.
 
 ## Conversion
 
@@ -94,13 +115,16 @@ This repo uses the [DevGate Agentic Framework](https://github.com/TheArchitectit
 
 **File-size limit:** all source files stay under 500 lines (soft warning at 300). When a file hits the soft limit, split it rather than squeezing toward the hard limit.
 
-Run the gates before committing (all must pass):
+Run the gates before committing (all must pass). One-time setup on a fresh
+clone: `npm install` (the semantic scan needs the devDependency `typescript`;
+the gates themselves only need node + python3):
 
 ```bash
 node .devgate/scripts/guardrails-scan.mjs          # pattern scan
-node .devgate/scripts/semantic-scan.mjs            # TS/JS AST (skips: none here)
+node .devgate/scripts/semantic-scan.mjs            # TS/JS AST (no-op here: no TS/JS sources)
 python3 .devgate/scripts/regression_check.py --all --pre-commit
 node .devgate/scripts/run-tests.mjs
+python3 scripts/check_raw_dumps.py                 # raw-dump duplication check (REQ-QG5)
 ```
 
 Sprint bugs that must not regress are recorded in
