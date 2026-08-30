@@ -57,10 +57,12 @@ def main():
     ap.add_argument("--port", type=int, required=True)
     ap.add_argument("--tag", required=True)
     ap.add_argument("--tasks", default="toolcall,multiturn,summarize")
+    ap.add_argument("--suffix", default="",
+                    help="task-file suffix, e.g. _v2 for the real-repo suite")
     args = ap.parse_args()
     os.makedirs(RAW, exist_ok=True)
     for task in args.tasks.split(","):
-        path = os.path.join(TASKS, f"{task}.jsonl")
+        path = os.path.join(TASKS, f"{task}{args.suffix}.jsonl")
         recs = [json.loads(l) for l in open(path)]
         results = []
         for i, rec in enumerate(recs, 1):

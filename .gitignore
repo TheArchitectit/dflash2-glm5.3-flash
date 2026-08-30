@@ -7,3 +7,4 @@ node_modules/
 
 # GGUF artifacts / model dumps
 *.gguf
+*_v2.jsonl
