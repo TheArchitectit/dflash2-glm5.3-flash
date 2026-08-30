@@ -55,17 +55,20 @@ commit per step, DONE-token to the window log.
 - [x] Amdahl computed: multi-token buckets = 35% of touched / 61% of pairs;
   expert-batch 1.5-3x → 1.086-1.188x; IQ-dot 1.2-2x → 1.069-1.240x. Only a
   large speedup of the hot IQ3_S dot clears ≥15%. `research/09` W3 section.
-- [ ] Design pass (cpp-pro `mixed-iq-design`, read-only): can IQ3_S /
+- [x] **Design pass COMPLETE 2026-08-30 06:20** (cpp-pro, read-only) — can IQ3_S /
   IQ4_XS drop into `repack.cpp` `tensor_traits<BLOC,INTER,NB_COLS>`
   templates, or need a bespoke AVX-512/VNNI microkernel? All `quants.c`
   vec_dot assert `nrc==1` (no multi-column path) — fusion must be a new
   kernel, not a flag. Determines "add traits" vs "write kernel".
-- [ ] K-4 writeup final: branch + gate + `research/08` trend row +
+- [x] K-4 writeup final — 07 SUPERSEDED banner + amendment section, 08 closure row, 09 DECISION section (bb8712a, 9dd2b70). branch + gate + `research/08` trend row +
   `research/07` RC-1 amendment (the "~6.5x weight read" was an
   overestimate; measured 4.8x touched experts, already L1-amortized).
-- [ ] If a kernel path is chosen: open `kernel-iq3s-dot` openspec change
-  with microbench-first ladder (op-level `ggml-cpu` bench, not a 147 GB
-  window) before full-server A/B.
+- [x] **K-4 DECISION: RETIRED on this hardware** (no `kernel-iq3s-dot` change).
+  Box is Haswell (E5-2660 v3): AVX2-only, no AVX-512 (verified /proc/cpuinfo);
+  repack traits structurally incompatible with IQ3_S layout; fused multi-token
+  gemv asserts nrc==1 + bandwidth-bounded (<5%); combined-Amdahl best case
+  8.6% < 15% gate regardless. Portable AVX-512 follow-on drafted for community
+  notes (b7cceb0). Loop drained — add-moe-kernel-tuning COMPLETE.
 
 ## Rules
 
