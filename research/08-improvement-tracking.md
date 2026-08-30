@@ -168,3 +168,23 @@ dequant ALU. Follow-on: `kernel-iq3s-dot` openspec change (microbench-first
 ladder before any 147 GB A/B window). Recorded as the honest end of the
 measure-first phase: the remaining headroom is dequant instruction efficiency,
 not routing or attention.
+
+### K-4 CLOSURE (2026-08-30, same day) — retired on this hardware
+
+The design pass returned and one hardware check settled it: **ucs03 is a
+Xeon E5-2660 v3 (Haswell) — AVX2 only, no AVX-512/VNNI** (/proc/cpuinfo,
+verified). Every surviving path to ≥15% closes: repack traits for IQ3_S/IQ4_XS
+require a from-scratch `make_block_*`/`gemv_*` family (none exist; IQ3_S
+layout incompatible with the QK_K-aligned pattern); fused multi-token gemv is
+both a full rewrite (`assert(nrc==1); UNUSED` in every impl) *and* bandwidth-
+bounded (<5%); the AVX-512 IQ3_S rewrite — the only "borderline" candidate —
+has no ISA to run on here. Agent's combined-Amdahl best case: **8.6% e2e**,
+under the gate regardless.
+
+Net: **no throughput change from the kernel program** — its value is the
+measurement record (flat verify cost curve, 38.3/64 correlated experts,
+IQ3_S-dequant dominance) and the correction of RC-1's "~6.5× weight-read"
+estimate. Portable follow-on (AVX-512 VNNI IQ3_S path, absent from the tree)
+drafted in `notes/community-drafts.md` for a newer-CPU box. No kernel patch
+merged; probe commit stays observability-only on `llama-cpp-kernel`
+branch `kernel/moe-probe`.

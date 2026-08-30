@@ -122,3 +122,48 @@ template or need a bespoke AVX-512/VNNI microkernel, and whether
 implementation asserts `nrc == 1`, so multi-token fusion must be a new
 kernel, not a flag). That determines "add traits" vs "write kernel".
 
+## K-4 DECISION: RETIRE the CPU-kernel direction on this hardware
+
+The design pass + a hardware check (this box = **Xeon E5-2660 v3, Haswell:
+AVX2 only, NO AVX-512/VNNI — verified in /proc/cpuinfo**) close every
+surviving branch:
+
+- **repack traits for IQ3_S/IQ4_XS** — not a plug-in: no
+  `make_block_iq3_sx*`, no `repack_iq3_s_*`, no `ggml_gemv_iq3_s_*` exist
+  (zero matches in tree); IQ3_S's `scales[]`/`signs[]`/`qh[]` layout is
+  structurally incompatible with the `QK_K`-aligned `make_block_*` pattern
+  (ggml-common.h:413-422). This is a from-scratch multi-thousand-line
+  kernel rewrite on the most perf-critical, hardest-to-test path. Risk
+  ≫ reward.
+- **multi-token fused gemv (nrc>1)** — dead in two ways: (1) every
+  `ggml_vec_dot_iq3_s_q8_K`/`iq4_xs` impl, generic *and* x86 AVX2, is
+  `assert(nrc==1); UNUSED(nrc)` (quants.c:1096, arch/x86/quants.c:3386
+  …) and `type_traits_cpu[…].nrows==1`, so no caller passes nrc>1 —
+  fusion is a full new kernel, not a flag; (2) the agent's bandwidth
+  bound: batching reuses the ~110 B IQ3_S block across k tokens but the
+  `iq3s_grid` lookups dominate and don't shrink with k → <5% on IQ3_S,
+  ~3% Amdahl e2e. Under the gate.
+- **AVX-512/VNNI IQ3_S rewrite** — the agent's one "borderline" hope
+  (est. 8-10% e2e), **unavailable here**: Haswell has no AVX-512, and the
+  tree has zero `_mm512` IQ paths to compile in. Would only matter on a
+  newer deployment CPU.
+- Combined Amdahl, agent's own arithmetic: 1/(0.6123 + 0.3877·0.797) =
+  **8.6% e2e at best** even granting 15% on IQ3_S + 50% on IQ4_XS — below
+  the ≥15% gate REQ-K4 sets.
+
+**This is the outcome, not a failure**: the program's own W1/W2 data
+(flat cost curve, a = single-token cost, 38.3/64 correlated experts) already
+showed the weight-read traffic — the thing RC-1 blamed — is amortized by the
+*existing* 16×16-blocked `mul_mat_id`. There is no duplicate-read waste to
+recover. What remains (32.9% IQ3_S self) is intrinsic dequant/lookup cost
+that Haswell AVX2 is already near-optimal for.
+
+### Portable follow-on (for a different box, not this one)
+
+On an AVX-512 VNNI CPU (Ice Lake+/Zen4+), the IQ3_S dot has NO AVX-512 path
+in this tree at all — that is a real, quantified (32.9% self) upstream
+contribution, gated by the agent's own microbench rule: ≥1.3× on
+`tools/llama-bench`-style op bench for IQ3_S×Q8_K at n_embd=4096 before
+touching it. Recorded in `notes/community-drafts.md` as a third draft note
+(new-CPU lever), not acted on here.
+

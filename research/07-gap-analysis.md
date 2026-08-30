@@ -15,6 +15,19 @@
 ## Root causes (ranked)
 
 ### RC-1: Verify-cost blowup from MoE routing divergence (biggest lever)
+> **SUPERSEDED 2026-08-30 (see `research/09`)** — measured and corrected:
+> the 8-token verify batch touches **38.3 distinct experts** (probe,
+> `LLAMA_MOE_PROBE`), not the ~58 uncorrelated estimate — block-diffusion
+> drafts route with strong adjacent correlation. And the verify cost curve
+> is **flat** (fit intercept a = 0.759 s == single-token 0.758 s): FFN
+> weight traffic is already L1-amortized by the existing 16×16-blocked
+> `mul_mat_id`, so there is no ~6.5× weight-read waste to recover. The
+> residual is intrinsic IQ3_S dequant cost (32.9% perf self-share), and no
+> CPU kernel lever clears the ≥15% gate on this (Haswell, AVX2-only) box —
+> kernel direction retired here; the one portable lever (AVX-512 VNNI
+> IQ3_S path, absent from the tree) needs a newer CPU. Original reasoning
+> preserved below.
+
 The 8-token verify batch routes to more distinct experts than a 1-token decode.
 With 288 experts, 8 active/token: uncorrelated routing would touch ~58 experts
 (E≈288·(1−(1−8/288)^8)≈58) ⇒ ~6.5× the FFN weight read. Our measured 2.2 s
