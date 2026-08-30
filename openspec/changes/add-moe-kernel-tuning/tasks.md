@@ -39,15 +39,33 @@ commit per step, DONE-token to the window log.
   distinct experts**/64 slots vs uncorrelated floor 57.9; cne1>8 never;
   excess-vs-n2-baseline col_rate +0.34. `moe_probe_win1.txt` +
   `scripts/moe_probe_parse.py`.
-- [ ] W3 attribution: `perf record` (lbr, paranoid=2 raised for window)
-  during synth n_max=7 sustained decode; top symbols →
-  `benchmarks/raw/k3_perf_report.txt`. Decides K-4: MoE share ≥35% →
-  IQ4_XS **repack** (b); ssm/KDA ≥30% → KDA batching (c); else retire the
-  direction with the published flat-curve result.
-- [ ] K-4 gate: `research/09-kernel-findings.md` (fit, shares, histogram,
-  branch chosen) + `research/07` RC-1 amendment + `research/08` trend rows.
-- [ ] If branch chosen: open `kernel-<lever>` openspec change; else record
-  retirement decision here and stop loop.
+- [x] **W3 attribution COMPLETE 2026-08-30 05:52** — perf record LBR on
+  synth n_max=7 decode-only (2.84M samples), `paranoid` raised 4→2 for the
+  window then reverted. Top self: `iq3_s_q8_K` **32.89%**, `iq4_xs_q8_K`
+  5.88%, `q6_K` 1.91%, KDA `gated_delta_net` **1.04%**, flash_attn 0.74%.
+  Report: `benchmarks/raw/k3_perf_report.txt`, window `k3_window.log`.
+  **Overrides the W1 branch table:** KDA batching (c) DEAD (1.04%); the
+  planned IQ4_XS repack (b) was aimed at the wrong quant (IQ4_XS only 5.9%
+  — this mixed target's routed experts are mostly **IQ3_S**, 82/129
+  tensors); expert-reuse (a) bounded to ~8-12% (< gate, existing 16×16
+  blocking already captures per-bucket reuse).
+
+## K-4 — revised branch: mixed-IQ microkernel (IQ3_S first)
+
+- [x] Amdahl computed: multi-token buckets = 35% of touched / 61% of pairs;
+  expert-batch 1.5-3x → 1.086-1.188x; IQ-dot 1.2-2x → 1.069-1.240x. Only a
+  large speedup of the hot IQ3_S dot clears ≥15%. `research/09` W3 section.
+- [ ] Design pass (cpp-pro `mixed-iq-design`, read-only): can IQ3_S /
+  IQ4_XS drop into `repack.cpp` `tensor_traits<BLOC,INTER,NB_COLS>`
+  templates, or need a bespoke AVX-512/VNNI microkernel? All `quants.c`
+  vec_dot assert `nrc==1` (no multi-column path) — fusion must be a new
+  kernel, not a flag. Determines "add traits" vs "write kernel".
+- [ ] K-4 writeup final: branch + gate + `research/08` trend row +
+  `research/07` RC-1 amendment (the "~6.5x weight read" was an
+  overestimate; measured 4.8x touched experts, already L1-amortized).
+- [ ] If a kernel path is chosen: open `kernel-iq3s-dot` openspec change
+  with microbench-first ladder (op-level `ggml-cpu` bench, not a 147 GB
+  window) before full-server A/B.
 
 ## Rules
 

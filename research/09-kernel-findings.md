@@ -73,3 +73,52 @@ not dedup), not expert-reuse. If KDA/ssm dominates → branch c.
 REQ-K1 decision table: flat curve (b=0.21× < 0.3×) → branch (a) expert-reuse
 **retired pending W3 confirmation**; (b) IQ4_XS repack and (c) KDA batching
 live, decided by the perf shares in W3.
+
+## W3 — op-class attribution (perf record LBR, synth n_max=7, decode-only)
+
+Captured after the 147 GB load so samples exclude startup; 2.84 M samples,
+`ggml_graph_compute_thread` = 99.56% (thread pool is where all CPU work is).
+Self% of the hot leaves (children/inclusive overlap — self is the honest
+metric):
+
+| symbol | self% | what |
+|---|---|---|
+| `ggml_vec_dot_iq3_s_q8_K` | **32.89%** | IQ3_S dot — MoE routed experts (82/129 tensors) |
+| `ggml_compute_forward_mul_mat` | 17.67% (incl) | dense/attn matmul wrapper (→ sgemm, Q8_0 shared experts) |
+| `llamafile_sgemm` / tinyBLAS_Q0_AVX | 13.21% / ~10% (incl) | Q8_0/F16 GEMM (shared experts, dense) |
+| `ggml_vec_dot_iq4_xs_q8_K` | **5.88%** | IQ4_XS dot — 41/129 routed tensors |
+| `ggml_vec_dot_q6_K_q8_K` | 1.91% | Q6_K dot |
+| `ggml_compute_forward_gated_delta_net` (KDA) | **1.04%** | the 34 linear-attn layers |
+| `flash_attn_ext` | 0.74% | attention |
+
+### Branch decision (W3 overrides the W1 gate's tentativeness)
+
+- **Branch (c) KDA batching — DEAD.** gated_delta_net is 1.04%; even making
+  it free is ~1%. The 0.158 s/token b-term is not KDA.
+- **Branch (a) expert-reuse batching — bounded out.** Amdahl on the flat
+  curve: making the 61% of pairs that sit in multi-token expert buckets
+  *free* saves ≤ 0.61 × (0.3289+0.0588) = 23.7% raw, but the W1 fit says
+  that traffic is already L1-amortized (a = single-token cost). Realistic
+  fused-decode speedup (load IQ3_S block once for k tokens, ~1.5–2× on the
+  decode overhead of the multi-token 35% of buckets) lands **8–12%**, under
+  the ≥15% gate.
+- **Branch (b′) mixed-IQ microkernel — the surviving lever, and bigger
+  than planned.** The single hottest function in the entire server is
+  `ggml_vec_dot_iq3_s_q8_K` (32.9% self), and it is **workload-agnostic**:
+  it dominates single-token decode (the 1.32 t/s baseline), prefill, AND
+  verify. A faster IQ3_S dot (the x86 tree has one AVX2 path at
+  `arch/x86/quants.c:3384`; RISC-V already carries vl128/256/512
+  specializations the x86 build does not) lifts every phase at once —
+  which is what a ≥15% *effective* win on a bandwidth-bound box actually
+  requires. The planned "IQ4_XS repack" was aimed at the wrong quant:
+  IQ4_XS is only 5.9% here.
+
+### Next: K-4 branch (b′) — design before code
+
+A read-only design pass (cpp-pro specialist) is checking whether IQ3_S /
+IQ4_XS drop into the `repack.cpp` `tensor_traits<BLOC,INTER,NB_COLS>`
+template or need a bespoke AVX-512/VNNI microkernel, and whether
+`ggml_vec_dot(..., nrc)` multi-column paths exist (every quants.c
+implementation asserts `nrc == 1`, so multi-token fusion must be a new
+kernel, not a flag). That determines "add traits" vs "write kernel".
+
