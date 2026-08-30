@@ -225,12 +225,20 @@ async function main() {
 		for (const r of failed.slice()) {
 			console.error(`▶ solo: ${r.file}`);
 			const solo = await runOne(join(PROJECT_ROOT, r.file));
-			if (solo.fail === 0) {
+			// A solo re-run only clears a failure if it GENUINELY succeeded:
+			// zero failures AND a clean exit. A file that crashed before any
+			// test ran (collection error, missing import) emits no "N failed"
+			// lines — fail parses as 0 — and must NOT be adjudicated as a
+			// flake. That masking is a silent-success failure mode.
+			const soloClean = solo.fail === 0 && solo.code === 0 && !solo.timedOut;
+			if (soloClean) {
 				totalFail -= r.fail; flakes.push(r.file);
 				failed.splice(failed.indexOf(r), 1);
 				console.error(`✓ solo: ${r.file}  (${solo.pass} pass / 0 fail, ${fmt(solo.ms)})  (flake)`);
 			} else {
-				console.error(`✗ solo: ${r.file}  (${solo.pass} pass / ${solo.fail} fail)`);
+				const why = solo.timedOut ? "TIMED OUT" :
+					solo.code !== 0 ? `crashed, code ${solo.code}` : `${solo.fail} fail`;
+				console.error(`✗ solo: ${r.file}  (${solo.pass} pass / ${solo.fail} fail — ${why})`);
 			}
 		}
 	}
