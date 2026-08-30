@@ -15,6 +15,7 @@
 set -uo pipefail
 
 BIN="${BIN:-/mnt/ollama/models/llama-cpp-kernel/build-probe/bin/llama-server}"
+BIN_EXTRA="${BIN_EXTRA:-}"   # e.g. "perf record -F 99 --call-graph=lbr -o /tmp/k3.data --" (W3)
 MODEL="${MODEL:-/mnt/ollama/models/glm-5.3-flash/UD-IQ4_XS/GLM-5.3-Flash-UD-IQ4_XS-00001-of-00005.gguf}"
 DRAFT="${DRAFT:-/mnt/ollama/models/glm-5.3-flash/dflash2-gguf/dflash2-glm-f16.gguf}"
 PORT="${PORT:-8100}"
@@ -33,7 +34,8 @@ if curl -sf "http://127.0.0.1:$PORT/health" >/dev/null 2>&1; then
   echo "port $PORT busy — solo-run conflict, refusing" >&2; exit 1
 fi
 
-"$BIN" \
+# shellcheck disable=SC2086
+${BIN_EXTRA} "$BIN" \
   -m "$MODEL" -md "$DRAFT" \
   --spec-type draft-dflash --spec-draft-n-max "$NMAX" --spec-draft-p-min 0 \
   --spec-synth-rates "$RATES" \
