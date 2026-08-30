@@ -136,3 +136,16 @@ p_min gating); the **t/s win is real** (+51% same-suite). Cross-check: 50-prompt
 server-side ground truth 2.76 and GSM8K 2.69 are higher than this 1.79 because
 n_predict 32 under-weights accepted tails vs amortized first-step overhead —
 suites are not interchangeable; each number is tagged with its ruler + suite.
+
+## Task 4.5 — draft quant variants A/B (2026-08-30, measured)
+
+8-prompt corrected-ruler suite (n_predict 32), solo swap chains:
+
+| draft | acc_len | t/s | verdict |
+|---|---|---|---|
+| F16 (production) | 1.79 | 1.65 | baseline |
+| Q8_0 (1.25 GB) | **1.85** | 1.80 | no degradation (+3.4% acc, noise-range tps) |
+| BF16 (2.35 GB) | **1.99** | 1.92 | no degradation (+11.2% acc, n=8 spread caveat) |
+
+Gate (4.5): "if acceptance drops >2% → F16 only" — no drop in either
+variant -> publish all three. F8 selector-precision risk closed.
