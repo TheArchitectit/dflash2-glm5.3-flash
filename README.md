@@ -1,15 +1,18 @@
 # dflash2-llamacpp
 
-Working notes, benchmark harnesses, gate scripts, and a CPU-correctness test
+Working notes, benchmark harnesses, gate scripts, and a correctness test
 chain for running [incoai's DFlash2](https://huggingface.co/incoai/GLM-5.3-Flash-DFlash2)
-block-diffusion speculative decoding for **GLM-5.3-Flash on CPU-only hosts**
-via [llama.cpp](https://github.com/ggml-org/llama.cpp)
+block-diffusion speculative decoding for **GLM-5.3-Flash** via
+[llama.cpp](https://github.com/ggml-org/llama.cpp)
 (`--spec-type draft-dflash`, already upstream in the fork we build).
+Everything is **measured on CPU-only hardware**; GPU serving is supported
+and documented (`docs/gpu.md`) but the numbers here are CPU — the flags are
+code-verified against the fork, not GPU-benchmarked by us.
 
-**Status: v0.0.1 in progress** — conversion, golden correctness, and CPU
-benchmarks are measured; HF weight publication pending
-(`user001/GLM-5.3-Flash-DFlash2-GGUF`, draft GGUF only — the 147 GB target is
-not distributed here).
+**Status: v0.0.1 shipped** (GitHub release `v0.0.1-dflash2-glm`). HF weight
+publication is staged and deferred — one command when wanted:
+`bash huggingface/upload.sh` (draft GGUFs only; the 147 GB target is not
+distributed here).
 
 ## What works today (measured, not projected)
 
@@ -33,7 +36,9 @@ full 7-token blocks on CPU because MoE verify cost scales with batch width
 DFlash2 was SGLang/GPU-only; llama.cpp's dflash path runs the block-diffusion
 drafter (1B, 5 GQA layers, headless — borrows the target's embeddings and
 lm_head via `ctx_other`) entirely on CPU, where verifying a block costs one
-target forward pass — the same weight read as generating 1 token.
+target forward pass — the same weight read as generating 1 token. GPU
+backends work too (and the drafter offloads independently of the target with
+`-ngld all` — useful for this 147 GB model on small cards): `docs/gpu.md`.
 
 ## Repo map
 
@@ -43,8 +48,9 @@ target forward pass — the same weight read as generating 1 token.
 | `research/01..08` | deep dives: model, worker, SGLang framework, target hooks, converter, ecosystem, gap analysis, improvement tracking |
 | `scripts/` | conversion gate checks (`check_tensor_inventory`, `diff_gguf_meta`, `check_conv_base`) + benches (`bench_acceptance`, `bench_agentic`, `bench_gsm8k_mirror`, `bench_greedy_lossless`, `ab_8prompt`) + suite generators |
 | `tests/golden/` | two-arm golden chain: pure-torch SGLang reimpl vs llama.cpp replay harness (fixtures gitignored; regenerable, fixed seeds) |
-| `systemd/` | production unit (dflash2), spec-off baseline unit, defunct mtp probe (arch lacks the NextN graph — finding in `research/08`) |
+| `systemd/` | production unit (dflash2), spec-off baseline unit, defunct mtp probe (arch lacks the NextN graph — finding in `research/08`), GPU template unit |
 | `benchmarks/` | tier ladder, raw JSON/log dumps, results write-up |
+| `docs/gpu.md` | optional GPU serving: `-ngl`/`-ngld` flag matrix, VRAM budget, hybrid CPU-target/GPU-draft mode, why the CPU block config must be re-tuned on GPU |
 
 ## Serving recipe (verified on the box this was measured on)
 

@@ -1,0 +1,42 @@
+# TEMPLATE — GPU serving unit for DFlash2 spec-decode. Not installed or
+# verified on GPU hardware (our box has none — see docs/gpu.md "Known
+# caveats"). Copy to /etc/systemd/system, adjust paths/flags for your host,
+# then: systemctl daemon-reload && systemctl start <this>.
+#
+# The two interesting modes:
+#   -ngl 99                : target fully on GPU (needs VRAM >= quant size);
+#                            draft follows via --spec-draft-ngl auto
+#   -ngl 0 --ngld all      : hybrid — bandwidth-bound 147 GB target stays on
+#                            CPU, 1B drafter (~4 GB incl. KV) goes to GPU
+#
+# Block config defaults to the trained full block on GPU (n_max 7, p_min 0);
+# the CPU-locked 4/0.4/top-k 20 is tuned for verify-batch bandwidth cost
+# (research/07 RC-1) and should be re-measured before you keep it.
+
+[Unit]
+Description=GLM-5.3-Flash + DFlash2 draft on GPU (template — edit before use)
+After=network.target
+
+[Service]
+TimeoutStopSec=300
+Type=simple
+#User=change-me
+WorkingDirectory=/opt/llama.cpp
+ExecStart=/opt/llama.cpp/build/bin/llama-server \
+  -m /models/GLM-5.3-Flash/GLM-5.3-Flash-UD-IQ4_XS-00001-of-00005.gguf \
+  -md /models/dflash2-glm-f16.gguf \
+  --spec-type draft-dflash \
+  --spec-draft-n-max 7 --spec-draft-p-min 0.0 \
+  -ngl 0 --spec-draft-ngl all \
+  --alias unsloth/glm-5.3-flash-dflash2 \
+  --host 0.0.0.0 --port 8100 \
+  --parallel 1 --ctx-size 131072 --flash-attn on \
+  --cache-type-k f16 --cache-type-v f16 \
+  --batch-size 2048 --ubatch-size 512 \
+  --cont-batching --cache-prompt --cache-reuse 1024 \
+  --jinja --fit off \
+  --temp 1.0 --top-p 0.95 --top-k 20 --min-p 0.01 \
+  --repeat-penalty 1.05 \
+  --no-context-shift
+Restart=on-failure
+RestartSec=10s
