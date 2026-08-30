@@ -149,3 +149,22 @@ suites are not interchangeable; each number is tagged with its ruler + suite.
 
 Gate (4.5): "if acceptance drops >2% → F16 only" — no drop in either
 variant -> publish all three. F8 selector-precision risk closed.
+
+## K-4 kernel-attribution result — direction selected, no throughput change yet (2026-08-30)
+
+Measurement program `add-moe-kernel-tuning` (W1 cost curve, W2 routing probe,
+W3 perf attribution). **No t/s row** — this is a research gate, not a config
+change; production stays locked at n_max 4 + p_min 0.4 + top-k 20.
+
+| window | finding | branch decision |
+|---|---|---|
+| W1 | verify cost FLAT: b=0.21×/token, a==single-token (weights L1-amortized) | (a) expert-reuse bounded < gate → **retire F3** |
+| W2 | 8-tok verify touches 38.3 experts (not 58); correlation strong | confirms RC-1 overestimate |
+| W3 | `iq3_s_q8_K` 32.9% self (hottest fn), `iq4_xs_q8_K` 5.9%, KDA 1.04% | (c) KDA batching → **DEAD**; (b) repack was aimed at wrong quant |
+
+**K-4 outcome:** the surviving lever is a faster **IQ3_S dot microkernel**
+(branch b′) — workload-agnostic, clears ≥15% only if it hits ~1.2–2× on the
+dequant ALU. Follow-on: `kernel-iq3s-dot` openspec change (microbench-first
+ladder before any 147 GB A/B window). Recorded as the honest end of the
+measure-first phase: the remaining headroom is dequant instruction efficiency,
+not routing or attention.

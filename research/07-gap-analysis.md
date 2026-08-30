@@ -245,3 +245,27 @@ reaches 5.0; the honest range is ~2.2–3.9. Options:
 
 Pending the user's call, Sprint 3.6 is **not run to completion** and the
 publish blockers (Sprint 4) are not started.
+
+## RC-1 amendment — kernel measurements supersede this section (2026-08-30)
+
+The `~6.5×` / `2.75×` framing above was the **Sprint-2 estimate**, computed
+from an uncorrelated-routing model. The `add-moe-kernel-tuning` program
+(W1–W3, `research/09`) measured the reality and supersedes it:
+
+- **W1 cost curve is FLAT:** `cost(n)=0.759 + 0.158·(n−1)` s; the intercept
+  equals the single-token cost → weight traffic is **already L1-amortized**
+  by the existing 16×16 `mul_mat_id` blocking. It is not re-read per token.
+- **W2 routing probe:** an 8-token verify touches **38.3** distinct experts,
+  not 58 (adjacent-draft correlation is strong; RC-1's uncorrelated floor
+  overestimated spread by −34%).
+- **W3 attribution:** the b·n residual is **not** expert *dedup* waste and
+  **not** KDA (1.04%) — it is expert **dequant ALU**: `ggml_vec_dot_iq3_s_q8_K`
+  is 32.9% self (the hottest fn in the server) + `iq4_xs_q8_K` 5.9%.
+
+**Revised RC-1 verdict:** F3 as originally framed (expert-reuse-aware verify)
+is **retired** — bounded to ~8–12%, under the ≥15% gate. The surviving lever
+is a faster **IQ3_S dot microkernel** (branch b′), which is *workload-agnostic*
+(dominate single-token, prefill, and verify alike) — see
+`openspec/changes/add-moe-kernel-tuning` K-4 and the follow-on `kernel-iq3s-dot`
+design. RC-1's "2.75×" is thus confirmed to be **bandwidth + dequant, not
+architectural waste** — publish that as the negative result.
