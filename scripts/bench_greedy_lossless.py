@@ -8,6 +8,10 @@ discipline the two servers are NEVER up at the same time:
   - arm B (spec off): :8101 (llama-server-glm5-nospec, run after A is stopped)
 
 Usage: bench_greedy_lossless.py [--n 10] [--host-a :8100] [--host-b :8101]
+       Solo-window flow (one 147 GB server at a time):
+         1. start llama-server-glm5-dflash2 (:8100)  -> --arm a
+         2. stop it, start llama-server-glm5-nospec (:8101) -> --arm b
+         3. --compare   (GATE verdict over the recorded arms)
 Writes arm outputs to /tmp/lossless_{a,b}.json and compares.
 """
 import argparse
@@ -72,13 +76,50 @@ def run_arm(host, n, tag):
     return outs
 
 
+def compare_arms() -> int:
+    """GATE verdict over the recorded arms (/tmp/lossless_{a,b}.json).
+
+    Exists so the two arms can run in SEPARATE solo windows (one 147 GB
+    server at a time — ~160 GB RAM each; both up at once would need
+    ~300 GB, more than the 251 GB measurement box has, and --arm both
+    requires exactly that)."""
+    a = json.load(open("/tmp/lossless_a.json"))
+    b = json.load(open("/tmp/lossless_b.json"))
+    match = 0
+    for x, y in zip(a, b):
+        if "error" in x or "error" in y:
+            print(f"[{x['i']}] SKIP (request error)")
+            continue
+        ok = x["text"] == y["text"]
+        match += ok
+        mark = "OK " if ok else "DIFF"
+        print(f"[{x['i']}] {mark} a_len={len(x['text'])} b_len={len(y['text'])}")
+        if not ok:
+            # first divergence point
+            xa, yb = x["text"], y["text"]
+            d = next((k for k in range(min(len(xa), len(yb))) if xa[k] != yb[k]), min(len(xa), len(yb)))
+            print(f"     first diff at char {d}: a={xa[max(0,d-20):d+20]!r} b={yb[max(0,d-20):d+20]!r}")
+    print(f"\n=== lossless: {match}/{len(a)} identical ===")
+    # gate scales with --n (REQ-QG4): a knob-controlled run size must not
+    # be compared against a hardcoded constant
+    gate_pass = match == len(a)
+    print(f"GATE {len(a)}/{len(a)} :", "PASS" if gate_pass else "FAIL")
+    return 0 if gate_pass else 1
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=10)
     ap.add_argument("--host-a", default="127.0.0.1:8100")
     ap.add_argument("--host-b", default="127.0.0.1:8101")
     ap.add_argument("--arm", choices=["a", "b", "both"], default="both")
+    ap.add_argument("--compare", action="store_true",
+                    help="GATE over previously recorded arms — run each arm in "
+                         "its own solo window (--arm a, then --arm b), then --compare")
     args = ap.parse_args()
+
+    if args.compare:
+        sys.exit(compare_arms())
 
     if args.arm in ("a", "both"):
         print("=== ARM A: spec ON ===")
@@ -88,31 +129,10 @@ def main():
             sys.exit(2)
     if args.arm in ("b", "both"):
         print("=== ARM B: spec OFF ===")
-        b = run_arm(args.host_b, args.n, "b")
+        run_arm(args.host_b, args.n, "b")
 
     if args.arm == "both":
-        a = json.load(open("/tmp/lossless_a.json"))
-        b = json.load(open("/tmp/lossless_b.json"))
-        match = 0
-        for x, y in zip(a, b):
-            if "error" in x or "error" in y:
-                print(f"[{x['i']}] SKIP (request error)")
-                continue
-            ok = x["text"] == y["text"]
-            match += ok
-            mark = "OK " if ok else "DIFF"
-            print(f"[{x['i']}] {mark} a_len={len(x['text'])} b_len={len(y['text'])}")
-            if not ok:
-                # first divergence point
-                xa, yb = x["text"], y["text"]
-                d = next((k for k in range(min(len(xa), len(yb))) if xa[k] != yb[k]), min(len(xa), len(yb)))
-                print(f"     first diff at char {d}: a={xa[max(0,d-20):d+20]!r} b={yb[max(0,d-20):d+20]!r}")
-        print(f"\n=== lossless: {match}/{len(a)} identical ===")
-        # gate scales with --n (REQ-QG4): a knob-controlled run size must not
-        # be compared against a hardcoded constant
-        gate_pass = match == len(a)
-        print(f"GATE {len(a)}/{len(a)} :", "PASS" if gate_pass else "FAIL")
-        sys.exit(0 if gate_pass else 1)
+        sys.exit(compare_arms())
 
 
 if __name__ == "__main__":

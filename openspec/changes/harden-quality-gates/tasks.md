@@ -32,9 +32,16 @@ change is demonstrated red→green in the commit message, not asserted.
   impossible before the fix); injected divergence at prompt 4 →
   `[4] DIFF` + first-diff char report, exit 1. Instrument validated
   end-to-end over HTTP.
-- [ ] Box-side (open): the REAL REQ-SD-4 arms against the 147 GB target.
-  This host is not the measurement box (31 GB RAM, no /mnt/ollama — the
-  load is physically impossible here; probe recorded 2026-08-31).
+- [x] Solo-window unlock (2026-08-31): the GATE verdict previously
+  required `--arm both` = both 147 GB servers up simultaneously
+  (~300 GB — more than the 251 GB measurement box; the likely reason
+  REQ-SD-4 sat pending since 08-29). New `--compare` mode reuses the
+  recorded arms: `--arm a` → swap units → `--arm b` → `--compare`.
+  Mock-validated end-to-end (PASS + injected-divergence FAIL paths).
+- [ ] Box-side (open): the REAL REQ-SD-4 arms against the 147 GB target,
+  now runnable in two solo windows on the 251 GB box (procedure in the
+  script docstring). This host is not that box (31 GB RAM, no
+  /mnt/ollama — probe recorded 2026-08-31).
 - [x] `diff_gguf_meta.py`: `or True` branch condition deleted;
   MUST_MATCH comparison flattened to a plain if/else (same verdict,
   readable operator precedence).
