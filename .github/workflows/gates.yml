@@ -33,10 +33,10 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install deps (npm ci for the semantic scan's typescript; numpy+pytest for the test chain; openspec CLI)
+      - name: Install deps (npm ci for the semantic scan's typescript; numpy+pytest+gguf for the test chain incl. synthetic conversion gates; openspec CLI)
         run: |
           npm ci
-          python3 -m pip install --quiet numpy pytest
+          python3 -m pip install --quiet numpy pytest gguf
           npm install --global @fission-ai/openspec@1.10.0
 
       - name: guardrails pattern scan

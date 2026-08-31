@@ -71,3 +71,26 @@ On this repo (single test file, crashed on import at the time):
 | test fixed | `✓ … (1 pass / 0 fail)` | 0 |
 
 Upstream PR: _(link when filed)_.
+
+---
+
+# Second upstream candidate: regression_check.py ignores file_glob; info severity blocks
+
+Found 2026-08-31 when the repo's new pre-commit hook blocked its own first
+commit on five false `PREVENT-027` ("Missing .dockerignore", severity
+`info`) violations — in a repo with no Dockerfile.
+
+1. **`file_glob` is dead config.** `check_diff_against_patterns` applies
+   every pattern rule to every changed file's diff. PREVENT-027 uses
+   `pattern: ".*"` scoped by `file_glob: ["Dockerfile", "Dockerfile.*"]`,
+   so every commit matched it. Fix: scope rules per file
+   (`rules_for_file()`, full-path OR basename fnmatch; empty glob = all
+   files).
+2. **`info` findings block the gate.** The pre-commit exit condition
+   counted files-with-issues regardless of severity. Fix: per-file
+   `blocking` flag = registry failures OR any non-info violation; exit
+   gates on blocking files. Info still prints in the report.
+
+Verified: no-Dockerfile staging → silent exit 0; staged Dockerfile →
+PREVENT-027 fires (glob honored), reported, exit 0. Recorded in the
+failure registry as `DG-001-REGCHECK-GLOB` (status: resolved).

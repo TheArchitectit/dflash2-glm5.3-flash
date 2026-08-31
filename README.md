@@ -129,7 +129,14 @@ python3 scripts/check_raw_dumps.py                 # raw-dump duplication check 
 
 CI (`.github/workflows/gates.yml`) runs this battery plus a gitleaks
 tree+history scan on every push and PR — the gates are enforced, not
-remembered.
+remembered. To run the fast subset on every local commit, wire the hook
+once per clone: `git config core.hooksPath .githooks`.
+
+The test chain runs without model assets; `tests/golden/test_hc_collapse.py`
+skips its real-weights arm and `tests/golden/test_conversion_gates_synthetic.py`
+(full pass/fail exercise of the three conversion STOP-GATE scripts against
+synthetic fixtures) skips entirely when the `gguf` package is absent —
+`pip install gguf` to run everything.
 
 Sprint bugs that must not regress are recorded in
 `.devgate/.guardrails/failure-registry.jsonl` (append-only; `log_failure.py`).

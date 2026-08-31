@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# pre-commit — fast gate subset (the full battery + gitleaks run in CI).
+# Install once per clone:  git config core.hooksPath .githooks
+# Bypass only with --no-verify, and say why in the commit message.
+set -uo pipefail
+cd "$(git rev-parse --show-toplevel)"
+fail=0
+run() {
+  echo "== $*"
+  "$@" || { echo "   GATE FAILED: $*" >&2; fail=1; }
+}
+
+run node .devgate/scripts/guardrails-scan.mjs
+
+if [ -d node_modules ]; then
+  run node .devgate/scripts/semantic-scan.mjs
+else
+  echo "== semantic scan skipped here (npm install first; CI covers it)"
+fi
+
+run python3 .devgate/scripts/regression_check.py --all --pre-commit
+run node .devgate/scripts/run-tests.mjs
+run python3 scripts/check_raw_dumps.py
+
+if command -v openspec >/dev/null 2>&1; then
+  run openspec validate --all
+else
+  echo "== openspec CLI not found — validate skipped here, enforced in CI"
+fi
+
+if [ "$fail" -ne 0 ]; then
+  echo "" >&2
+  echo "COMMIT BLOCKED — fix the gates above (or commit with --no-verify and say why in the message)." >&2
+fi
+exit "$fail"

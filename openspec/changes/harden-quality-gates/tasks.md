@@ -92,3 +92,20 @@ change is demonstrated red→green in the commit message, not asserted.
   (preamble in its tasks.md records the basis; 3.7 / 4.6 / 4.7 stay open
   and honest). `release-v001-dynamic` 7/10 → 9/10 (L1/L2 RETIRED with the
   drained loop; T6 deferred-by-user remains the one open item).
+
+## G9 — conversion gates exercised end-to-end + pre-commit hook (applied 2026-08-31)
+
+- [x] `tests/golden/test_conversion_gates_synthetic.py`: builds a minimal
+  self-consistent 81-tensor ckpt+GGUF pair (+ a ref differing only in
+  allowlisted metadata), runs all three STOP-GATE scripts' main()
+  in-process, and asserts 3 PASS + 5 FAIL modes (shape mismatch,
+  block_size gate, forbidden tensor, conv tap-swap, unexpected KV). The
+  conversion gates had only ever executed on the author's filesystem;
+  pip `gguf` (has `ReaderField.contents()`) makes them runnable anywhere.
+- [x] Degradation discipline: without gguf the file COLLECTS-AND-SKIPS —
+  not `allow_module_level=True`, whose empty collection exits pytest 5
+  and would (correctly, post-G1!) fail the gate. Found live: the first
+  draft used allow_module_level and the fixed adjudication caught it.
+- [x] CI installs `gguf` → the synthetic exercise runs on every push/PR.
+- [x] `.githooks/pre-commit` (fast gate subset; install:
+  `git config core.hooksPath .githooks`), README wiring.
