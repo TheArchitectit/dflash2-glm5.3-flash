@@ -70,7 +70,10 @@ On this repo (single test file, crashed on import at the time):
 | detector fix | `✗ solo … crashed, code 2` under FAILED FILES | 1 |
 | test fixed | `✓ … (1 pass / 0 fail)` | 0 |
 
-Upstream PR: _(link when filed)_.
+Upstream PR: https://github.com/TheArchitectit/DevGate-Agentic-Framework/pull/1
+(filed 2026-08-31; the PR also repairs a syntax-mangled run-tests.mjs on
+upstream main — literal `***` at lines 143/202 made every gate invocation
+die with SyntaxError — plus the regression_check file_glob/info fixes.)
 
 ---
 
