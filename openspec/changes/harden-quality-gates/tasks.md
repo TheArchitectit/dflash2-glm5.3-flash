@@ -76,13 +76,12 @@ change is demonstrated red→green in the commit message, not asserted.
 - [x] Upstream-ready patch packaged at
   `notes/devgate-upstream-adjudication-fix.md` (bug, diff, rationale,
   verification record; the vendored copy carries the fix since `61a88ca`).
-- [x] PR filed 2026-08-31 against TheArchitectit/DevGate-Agentic-Framework:
+- [x] PR **MERGED upstream 2026-08-31** (`45bc3df`):
   https://github.com/TheArchitectit/DevGate-Agentic-Framework/pull/1 —
-  carries the adjudication fix, the regression_check file_glob/info fixes,
-  and a repair of upstream main's syntax-mangled run-tests.mjs (literal
-  `***` at lines 143/202 → every gate invocation died with SyntaxError;
-  the healthy code only existed in this repo's vendored copy). Framework's
-  own suite 14/14 against the changes.
+  the adjudication fix, the regression_check file_glob/info fixes, and a
+  repair of upstream main's syntax-mangled run-tests.mjs. Post-merge
+  verified: this repo's vendored copies are byte-identical to merged
+  upstream for both files; upstream runner parses.
 
 ## G7 — late sweep: remaining QA-report items (applied 2026-08-31)
 

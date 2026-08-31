@@ -71,9 +71,12 @@ On this repo (single test file, crashed on import at the time):
 | test fixed | `✓ … (1 pass / 0 fail)` | 0 |
 
 Upstream PR: https://github.com/TheArchitectit/DevGate-Agentic-Framework/pull/1
-(filed 2026-08-31; the PR also repairs a syntax-mangled run-tests.mjs on
-upstream main — literal `***` at lines 143/202 made every gate invocation
-die with SyntaxError — plus the regression_check file_glob/info fixes.)
+**MERGED 2026-08-31 (45bc3df)** — the PR also repaired a syntax-mangled
+run-tests.mjs on upstream main (literal `***` at lines 143/202 made every
+gate invocation die with SyntaxError) plus the regression_check
+file_glob/info fixes. Post-merge verification: the vendored copies in
+this repo's .devgate/ are byte-identical to merged upstream for both
+files, and upstream's runner parses (node --check).
 
 ---
 
