@@ -60,6 +60,12 @@ live state, commit per step). Escalation triggers in REQ-WF-4.
 
 ## Loop hygiene
 
-- [ ] **L1** — every tick: verify state from ground truth (log exists, units,
-  ports) — never prior-tick memory (chain-death incident 2026-08-29/30).
-- [ ] **L2** — restore :8100 on every failure path of any swap chain.
+- [x] **L1 RETIRED 2026-08-31** — the autonomous loop it governed is
+  drained (K-4 closure, commit 04d9e57: "queue retired"); there are no
+  ticks left to verify state on. The rule it encodes (verify from ground
+  truth, never prior-tick memory) lives on in the openspec task
+  discipline itself.
+- [x] **L2 RETIRED 2026-08-31** — same loop retirement. The underlying
+  requirement stays real for any future swap chain and is encoded as
+  REQ-WF-1 (restore production on every exit path) in this change's spec
+  delta; nothing left to execute.

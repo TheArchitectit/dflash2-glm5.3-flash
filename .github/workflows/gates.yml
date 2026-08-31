@@ -1,0 +1,71 @@
+# gates — the README battery, enforced on every push/PR (REQ-QG3).
+# Everything here runs off-box by design: no /mnt assets, no gguf package
+# (test_hc_collapse skips its real-weights arm), no fork build.
+name: gates
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: gates-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  battery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps (npm ci for the semantic scan's typescript; numpy+pytest for the test chain; openspec CLI)
+        run: |
+          npm ci
+          python3 -m pip install --quiet numpy pytest
+          npm install --global @fission-ai/openspec@1.10.0
+
+      - name: guardrails pattern scan
+        run: node .devgate/scripts/guardrails-scan.mjs
+
+      - name: semantic scan (TS/JS AST)
+        run: node .devgate/scripts/semantic-scan.mjs
+
+      - name: regression check
+        run: python3 .devgate/scripts/regression_check.py --all --pre-commit
+
+      - name: tests
+        run: node .devgate/scripts/run-tests.mjs
+
+      - name: raw-dump duplication check (REQ-QG5)
+        run: python3 scripts/check_raw_dumps.py
+
+      - name: openspec validate
+        run: openspec validate --all
+
+  secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: gitleaks over tree + full history (release discipline)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -80,3 +80,15 @@ change is demonstrated red→green in the commit message, not asserted.
 - [x] Golden-chain dead code (pyflakes): `compare_golden.py` unused
   `json` import + dead `sc`/`ss` locals; `sglang_ref_dump.py` unused
   `sys` import + dead `kv_size`/`pos_arr`.
+
+## G8 — CI + openspec queue reconciliation (applied 2026-08-31)
+
+- [x] `.github/workflows/gates.yml`: the full README battery + gitleaks
+  (tree + history, the repo's pre-push discipline) on every push/PR —
+  REQ-QG3 becomes enforced, not remembered. Runs off-box by design: npm
+  ci, numpy+pytest, openspec CLI pinned @1.10.0; no /mnt assets, no gguf.
+- [x] `openspec list` drift fixed: `add-dflash2-support` read 0/38 while
+  v0.0.1 shipped — reconciled 35/38 against repo evidence only
+  (preamble in its tasks.md records the basis; 3.7 / 4.6 / 4.7 stay open
+  and honest). `release-v001-dynamic` 7/10 → 9/10 (L1/L2 RETIRED with the
+  drained loop; T6 deferred-by-user remains the one open item).

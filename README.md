@@ -127,6 +127,10 @@ node .devgate/scripts/run-tests.mjs
 python3 scripts/check_raw_dumps.py                 # raw-dump duplication check (REQ-QG5)
 ```
 
+CI (`.github/workflows/gates.yml`) runs this battery plus a gitleaks
+tree+history scan on every push and PR — the gates are enforced, not
+remembered.
+
 Sprint bugs that must not regress are recorded in
 `.devgate/.guardrails/failure-registry.jsonl` (append-only; `log_failure.py`).
 Release discipline: secret battery over tree + full history before any push;
