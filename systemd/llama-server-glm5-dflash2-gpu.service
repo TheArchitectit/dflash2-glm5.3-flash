@@ -22,6 +22,10 @@ TimeoutStopSec=300
 Type=simple
 #User=change-me
 WorkingDirectory=/opt/llama.cpp
+# Bind loopback by default (REQ-SS1): llama-server performs NO
+# authentication — a LAN-wide bind is a free endpoint for anyone who can
+# reach it. To expose deliberately, change to 0.0.0.0 and firewall it
+# yourself:
 ExecStart=/opt/llama.cpp/build/bin/llama-server \
   -m /models/GLM-5.3-Flash/GLM-5.3-Flash-UD-IQ4_XS-00001-of-00005.gguf \
   -md /models/dflash2-glm-f16.gguf \
@@ -29,7 +33,7 @@ ExecStart=/opt/llama.cpp/build/bin/llama-server \
   --spec-draft-n-max 7 --spec-draft-p-min 0.0 \
   -ngl 0 --spec-draft-ngl all \
   --alias unsloth/glm-5.3-flash-dflash2 \
-  --host 0.0.0.0 --port 8100 \
+  --host 127.0.0.1 --port 8100 \
   --parallel 1 --ctx-size 131072 --flash-attn on \
   --cache-type-k f16 --cache-type-v f16 \
   --batch-size 2048 --ubatch-size 512 \

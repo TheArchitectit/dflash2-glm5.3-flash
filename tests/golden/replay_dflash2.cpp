@@ -103,11 +103,11 @@ int main(int argc, char ** argv) {
     cparams.n_threads = 20;
     cparams.ctx_other = ctx_other;  // supplies tok_embd + output for the headless draft
     llama_context * ctx = llama_init_from_model(model, cparams);
+    if (!ctx) { fprintf(stderr, "failed to create draft context\n"); return 1; }
     // production dflash2 setup (speculative.cpp:1054): unmasked nextn —
     // one embedding row per token, the selector lattice among them
     llama_set_embeddings_nextn(ctx, true, /*masked*/ false);
     llama_set_causal_attn(ctx, false);
-    if (!ctx) { fprintf(stderr, "failed to create draft context\n"); return 1; }
 
     const int32_t  n_embd_dec = llama_model_n_embd(model);
     const uint32_t layer_n    = llama_model_target_layer_ids_n(model);

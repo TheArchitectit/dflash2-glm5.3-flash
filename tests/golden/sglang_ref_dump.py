@@ -30,14 +30,15 @@ Run: /mnt/ollama/models/glm-5.3-flash/sglang-venv/bin/python tests/golden/sglang
 
 import json
 import os
-import sys
 
 import numpy as np
 import torch
 import torch.nn.functional as F
 
-CHECKPOINT = "/mnt/ollama/models/glm-5.3-flash/dflash2/model.safetensors"
-CONFIG = "/mnt/ollama/models/glm-5.3-flash/dflash2/config.json"
+CHECKPOINT = os.environ.get(
+    "DFLASH2_CKPT", "/mnt/ollama/models/glm-5.3-flash/dflash2/model.safetensors")
+CONFIG = os.environ.get(
+    "DFLASH2_CONFIG", "/mnt/ollama/models/glm-5.3-flash/dflash2/config.json")
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURES = os.path.join(HERE, "fixtures")
 TARGET_LAYERS_0IDX = [5, 14, 24, 33, 42]
@@ -98,7 +99,6 @@ def main():
     top_k = cfg["dflash_config"]["selector_top_k"]
     mask_id = cfg["dflash_config"]["mask_token_id"]
     n_groups = H // GROUP
-    kv_size = kvh * hd
 
     fz = np.load(os.path.join(FIXTURES, "hiddens.npz"))
     tokens_np = fz["tokens"]
@@ -146,7 +146,6 @@ def main():
     residual = None
     pos_blk = torch.arange(N, N + S)
     # sliding window over prefix keys: window [pos - win, pos]
-    pos_arr = pos_blk.float()
 
     hiddens_per_layer = []
     for il in range(L):

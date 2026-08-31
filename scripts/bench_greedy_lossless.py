@@ -73,7 +73,6 @@ def run_arm(host, n, tag):
 
 
 def main():
-    import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=10)
     ap.add_argument("--host-a", default="127.0.0.1:8100")
@@ -109,8 +108,11 @@ def main():
                 d = next((k for k in range(min(len(xa), len(yb))) if xa[k] != yb[k]), min(len(xa), len(yb)))
                 print(f"     first diff at char {d}: a={xa[max(0,d-20):d+20]!r} b={yb[max(0,d-20):d+20]!r}")
         print(f"\n=== lossless: {match}/{len(a)} identical ===")
-        print("GATE 10/10 :" , "PASS" if match == len(a) == 10 else "FAIL")
-        sys.exit(0 if match == len(a) == 10 else 1)
+        # gate scales with --n (REQ-QG4): a knob-controlled run size must not
+        # be compared against a hardcoded constant
+        gate_pass = match == len(a)
+        print(f"GATE {len(a)}/{len(a)} :", "PASS" if gate_pass else "FAIL")
+        sys.exit(0 if gate_pass else 1)
 
 
 if __name__ == "__main__":

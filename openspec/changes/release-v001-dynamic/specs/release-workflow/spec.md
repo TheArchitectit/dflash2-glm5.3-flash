@@ -1,5 +1,7 @@
 # spec delta: release-workflow (ADDED)
 
+## ADDED Requirements
+
 ### Requirement: REQ-WF-1 Serial solo-resource execution
 
 All release-queue steps SHALL execute one at a time on the box. Before any
@@ -68,7 +70,12 @@ reports (not asks) on completion.
 
 ### Requirement: REQ-WF-5 Tiered gates, honest numbers
 
-Publish-blocking gates: golden correctness 1e-3 (hard), self-determinism
-(hard), T0 no-net-loss (hard). Acceptance/throughput publish at their
-measured tier with raw numbers attached; no fabricated pass against the
-retired 5.0 hard-fail.
+Publish-blocking gates SHALL be: golden correctness 1e-3 (hard),
+self-determinism (hard), T0 no-net-loss (hard). Acceptance and throughput
+SHALL publish at their measured tier with raw numbers attached; no
+fabricated pass against the retired 5.0 hard-fail.
+
+#### Scenario: acceptance below the retired threshold
+
+- **WHEN** mean acceptance lands under 5.0 while golden correctness, self-determinism, and T0 all hold
+- **THEN** the release publishes at its measured acceptance tier with the raw dump attached, and the 5.0 figure is reported as retired rather than failed

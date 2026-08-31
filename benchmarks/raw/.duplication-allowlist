@@ -1,0 +1,7 @@
+# REQ-QG5 — known capture artifacts in benchmarks/raw, kept as evidence.
+# One `relativepath :: reason` per line ('#' comments). An entry means the
+# duplication was reviewed and accepted: the dump is NOT edited, the reason
+# is recorded here. Missing file = no allowlisted artifacts.
+# Example:
+#   some_run.log :: 2026-08-31: content captured twice by the logging tee;
+#     statistics computed once, numbers unaffected — see results write-up.

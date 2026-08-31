@@ -17,7 +17,6 @@ usage: python3 scripts/bench_acceptance.py [--url http://127.0.0.1:8100]
 import argparse
 import json
 import sys
-import time
 import urllib.error
 import urllib.request
 
@@ -108,7 +107,6 @@ def main():
 
     total_accepted = 0
     total_steps = 0
-    total_tps = 0.0
     n_ok = 0
     per_req = []
 

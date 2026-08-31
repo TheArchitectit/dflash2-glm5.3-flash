@@ -23,6 +23,10 @@ the 147 GB shards.
 
 Run standalone:  python3 tests/golden/test_hc_collapse.py [--target-gguf-dir DIR]
 Run via pytest:  pytest tests/golden/test_hc_collapse.py
+
+The gguf package is only needed for the real-weights arm (T1-synthetic runs
+without it). Point GGUF_PY at a llama.cpp checkout's gguf-py when the target
+GGUF is present; DFLASH2_TARGET_GGUF_DIR overrides the default dir.
 """
 
 import argparse
@@ -32,8 +36,12 @@ import sys
 import numpy as np
 import pytest
 
-sys.path.insert(0, "/mnt/ollama/models/llama-cpp-glm5/gguf-py")
-import gguf  # noqa: E402
+GGUF_PY = os.environ.get("GGUF_PY", "/mnt/ollama/models/llama-cpp-glm5/gguf-py")
+try:
+    sys.path.insert(0, GGUF_PY)
+    import gguf  # noqa: E402
+except ImportError:
+    gguf = None  # synthetic-path tests (T1) don't need it
 
 # ---- model constants (GLM-5.3-Flash / glm5next) --------------------------
 HC = 4             # glm5next.hyper_connection.count
@@ -42,11 +50,16 @@ RMS_EPS = 1e-5     # glm5next.attention.layer_norm_rms_epsilon
 HC_EPS = 1e-6      # glm5next.hyper_connection.epsilon
 LAYER = 5          # first dflash extraction layer (0-indexed)
 
-DEFAULT_GGUF_DIR = "/mnt/ollama/models/glm-5.3-flash/UD-IQ4_XS"
+DEFAULT_GGUF_DIR = os.environ.get(
+    "DFLASH2_TARGET_GGUF_DIR", "/mnt/ollama/models/glm-5.3-flash/UD-IQ4_XS")
 
 
 def load_hc_weights(gguf_dir: str, layer: int):
     """Dequantize blk.<layer>.hc_attn_{fn,base,scale} from the target GGUF."""
+    if gguf is None:
+        raise RuntimeError(
+            f"gguf package not importable (GGUF_PY={GGUF_PY!r}); "
+            "real-weights arm unavailable")
     for part in sorted(os.listdir(gguf_dir)):
         if not part.endswith(".gguf"):
             continue
@@ -67,6 +80,12 @@ def load_hc_weights(gguf_dir: str, layer: int):
             qtype = gguf.GGMLQuantizationType(t.tensor_type)
             if qtype == gguf.GGMLQuantizationType.F32:
                 return np.frombuffer(t.data, dtype=np.float32).reshape(shape)
+            if qtype != gguf.GGMLQuantizationType.Q8_0:
+                # deq below only knows the Q8_0 block layout — anything else
+                # must fail loudly, not silently produce garbage (a wrong-type
+                # tensor can still pass the shape assert below).
+                raise RuntimeError(f"{name}: unsupported quant type {qtype}, "
+                                   "expected F32 or Q8_0")
             bs, ts = gguf.GGML_QUANT_SIZES[qtype]
             nrows, ncols = shape[0], shape[1]
             assert flat.shape[0] == nrows * (ncols // bs) * ts, name
@@ -82,7 +101,7 @@ def real_or_synthetic_weights(gguf_dir, tokens=64, seed=42):
     production-magnitude weights. Returns (weights, is_real)."""
     try:
         return load_hc_weights(gguf_dir, LAYER), True
-    except (FileNotFoundError, OSError):
+    except (FileNotFoundError, OSError, RuntimeError, ImportError):
         rng = np.random.default_rng(seed)
         fn = rng.normal(0, 0.02, size=(3 * HC, N_EMBD)).astype(np.float32)
         base = rng.normal(0, 1.0, size=3 * HC).astype(np.float32)
@@ -132,6 +151,8 @@ def test_capture_gguf_weights_if_available():
     """T1 on real weights: with the target present, assert the capture still
     equals the unweighted mean and that the gated contraction (wrong path)
     diverges — the full original finding, corrected."""
+    if gguf is None:
+        pytest.skip(f"gguf package not importable (GGUF_PY={GGUF_PY!r})")
     if not os.path.isdir(DEFAULT_GGUF_DIR):
         pytest.skip(f"target GGUF dir {DEFAULT_GGUF_DIR} not present")
     (fn, base, scale), is_real = real_or_synthetic_weights(DEFAULT_GGUF_DIR)
@@ -155,6 +176,9 @@ def main():
     x = _residual()
     assert llamacpp_build_hc_mean(x) == pytest.approx(sglang_hc_contract(x), rel=0, abs=1e-6)
     print("PASS")
+    _, is_real = real_or_synthetic_weights(args.target_gguf_dir)
+    print(f"[hc] weights arm: {'real (target GGUF)' if is_real else 'synthetic'} "
+          f"from {args.target_gguf_dir}")
     rc = pytest.main([__file__, "-q"])
     return int(rc)
 

@@ -11,7 +11,7 @@
 #   [x] secret scan (gitleaks) clean; GitHub repo carries zero binaries
 set -euo pipefail
 REPO="${REPO:-lundrog/GLM-5.3-Flash-DFlash2-GGUF}"
-SRC=/mnt/ollama/models/glm-5.3-flash/dflash2-gguf
+SRC="${SRC:-/mnt/ollama/models/glm-5.3-flash/dflash2-gguf}"
 cd "$(dirname "$0")/.."
 
 echo "[1/4] upload F16 first (this creates $REPO private via --private)"
@@ -37,6 +37,15 @@ python3 scripts/check_tensor_inventory.py "$TMP/dflash2-glm-f16.gguf"
 rm -rf "$TMP"
 
 echo "[4/4] gates passed -> flipping public"
+# Making the repo public is an outward-facing, hard-to-walk-back action:
+# require an explicit yes (or FLIP_PUBLIC=1 for scripted runs).
+if [ "${FLIP_PUBLIC:-}" != "1" ]; then
+    read -r -p "Make $REPO public now? Type 'yes' to confirm: " ans
+    if [ "$ans" != "yes" ]; then
+        echo "ABORTED — $REPO stays private. Re-run with FLIP_PUBLIC=1 to skip this prompt."
+        exit 1
+    fi
+fi
 python3 -c "
 from huggingface_hub import HfApi
 HfApi().update_repo_visibility('$REPO', private=False)

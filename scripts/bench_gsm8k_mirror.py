@@ -6,6 +6,11 @@ Their methodology (runtime-results/v84/quality/gsm8k-distinct5-...json):
   max_tokens 512, NO top-k, standard rejection sampling.
   Published per-row acceptance: [5.25, 4.895, 5.266, 6.031, 5.70], mean 5.428.
 
+Sampling-tail caveat: their "no top-k" is approximated as top_k=40096 of a
+154880 vocab (closest the completion API's per-request override gets while
+keeping the tail) — the mirror is therefore approximate on the far tail, not
+an exact protocol match. See the in-code comment at the payload.
+
 We run the SAME prompts + settings on llama.cpp CPU DFlash2 (:8100), using the
 corrected acceptance identity steps = predicted_n - accepted (matches their
 token-weighted variant and server-context.cpp:664).

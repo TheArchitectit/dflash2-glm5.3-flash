@@ -15,7 +15,6 @@ or the divergence is quantified per-stage so the offending module is isolated.
 usage: python3 tests/golden/compare_golden.py
 """
 
-import json
 import os
 import struct
 import sys
@@ -72,8 +71,6 @@ def main():
     # scores are keyed by lc's candidate ordering; compare min-scored values)
     print(f"lc slot scores  [0][:6]: {lc['lattice'][1, TOP_K:TOP_K+6]}")
     print(f"sg slot scores [0][:6]: {sg['lattice_scores'][0, :6]}")
-    sc = lc["lattice"][1, TOP_K:TOP_K+TOP_K]
-    ss = sg["lattice_scores"][0]
     # both are top-16 rows sorted by unary? no — sorted by candidate id from
     # topk. Match by shared candidate ids.
     lc_c0 = lc_cand[0]
