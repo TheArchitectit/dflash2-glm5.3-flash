@@ -41,6 +41,7 @@ CONFIG = os.environ.get(
     "DFLASH2_CONFIG", "/mnt/ollama/models/glm-5.3-flash/dflash2/config.json")
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURES = os.path.join(HERE, "fixtures")
+os.makedirs(FIXTURES, exist_ok=True)  # fresh clone: fixtures/ is gitignored
 TARGET_LAYERS_0IDX = [5, 14, 24, 33, 42]
 
 BLOCK_SIZE = 8   # dflash_config.block_size

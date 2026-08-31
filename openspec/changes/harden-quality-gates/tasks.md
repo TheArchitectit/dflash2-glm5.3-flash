@@ -26,9 +26,15 @@ change is demonstrated red→green in the commit message, not asserted.
 - [x] `bench_greedy_lossless.py`: GATE compares `match == len(a)` and
   prints `GATE n/n` from the actual run size (10 stays the default,
   stops being a constant; REQ-QG4).
-- [ ] Box-side: re-run the REQ-SD-4 arms once to confirm 10/10 still
-  holds under the generalized gate (needs both servers; not runnable
-  off the measurement box).
+- [x] Harness drill (2026-08-31, off-box): `bench_greedy_lossless.py` run
+  unmodified against a deterministic mock llama-server — identical arms
+  `GATE 10/10 : PASS` exit 0; `--n 5` → `GATE 5/5 : PASS` (REQ-QG4 live,
+  impossible before the fix); injected divergence at prompt 4 →
+  `[4] DIFF` + first-diff char report, exit 1. Instrument validated
+  end-to-end over HTTP.
+- [ ] Box-side (open): the REAL REQ-SD-4 arms against the 147 GB target.
+  This host is not the measurement box (31 GB RAM, no /mnt/ollama — the
+  load is physically impossible here; probe recorded 2026-08-31).
 - [x] `diff_gguf_meta.py`: `or True` branch condition deleted;
   MUST_MATCH comparison flattened to a plain if/else (same verdict,
   readable operator precedence).

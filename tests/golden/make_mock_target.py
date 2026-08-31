@@ -21,6 +21,7 @@ import gguf  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURES = os.path.join(HERE, "fixtures")
+os.makedirs(FIXTURES, exist_ok=True)  # fresh clone: fixtures/ is gitignored
 OUT = os.path.join(FIXTURES, "mock_target.gguf")
 N_EMBD = 4096
 VOCAB = 154880

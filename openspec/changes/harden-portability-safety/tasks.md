@@ -49,10 +49,21 @@ observed) before its task is checked.
   recipe using only env vars + the upstream artifacts; states which
   steps need torch vs the llama.cpp fork build; determinism/re-baseline
   notes.
-- [ ] Box-side override smokes for `DFLASH2_CKPT`, `DFLASH2_DRAFT_GGUF`,
-  `LLAMACPP`, `SRC` (each var set to its real alternate location once,
-  script reaches the asset it names). `GGUF_PY` override already
-  demonstrated off-box (P1).
+- [x] Override smokes with synthetic alternates at real alternate paths
+  (2026-08-31, off-box): `DFLASH2_CKPT` — check_tensor_inventory read the
+  alternate safetensors header (marker tensor surfaced in output);
+  `DFLASH2_DRAFT_GGUF` — full make_mock_target run, the alternate draft's
+  tokenizer propagated into the output mock GGUF (only the 2.5 GB lm_head
+  seed fixture faked, labeled as such); `LLAMACPP` — build.sh compiled
+  against the alternate tree (its `#error` proof header fired);
+  `SRC` — upload.sh passed the alternate path to `hf` (stubbed, zero
+  network). `GGUF_PY` per P1.
+- [ ] Real-asset full runs (fork build, real draft GGUF, 147 GB target)
+  remain measurement-box territory.
+- [x] REQ-HP2 papercut fixed while smoking: `make_mock_target.py` +
+  `sglang_ref_dump.py` now `os.makedirs` their gitignored `fixtures/`
+  dir — fresh-clone regeneration no longer needs a manual mkdir (found
+  live: the smoke crashed on the missing dir).
 
 ## P5 — closure
 
