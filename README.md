@@ -1,4 +1,5 @@
 # dflash2-llamacpp
+[![Sponsor](https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-FF69B4?style=flat&logo=github-sponsors)](https://github.com/sponsors/TheArchitectit)
 
 Working notes, benchmark harnesses, gate scripts, and a correctness test
 chain for running [incoai's DFlash2](https://huggingface.co/incoai/GLM-5.3-Flash-DFlash2)
