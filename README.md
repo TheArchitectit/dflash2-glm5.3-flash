@@ -151,3 +151,9 @@ separate artifacts with their own licenses — the DFlash2 draft derives from
 commercial use without inco.ai), target from zai-org/GLM-5.3-Flash. The GGUF
 model card carries the weight license; this repo's MIT covers only our
 scripts, tests, and notes. DevGate framework: BSD 3-Clause (`.devgate/LICENSE`).
+
+---
+
+## ☕ Sponsor
+
+If this project helps you, consider sponsoring on GitHub: [github.com/sponsors/TheArchitectit](https://github.com/sponsors/TheArchitectit)
